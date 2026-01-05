@@ -3,246 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurador IA - Modo Seguro</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@upscalerjs/default-model@latest/dist/umd/index.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/upscaler@latest/dist/browser/umd/upscaler.min.js"></script>
-
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
-    
+    <title>Contador Creativas.me</title>
+    <meta property="og:type" content="video.other">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@900&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #0f172a; --panel: #1e293b; --accent: #10b981; --text: #f8fafc; }
-        body { margin: 0; font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        
-        .main-box {
-            width: 95%; max-width: 900px; background: var(--panel); border: 1px solid #334155;
-            border-radius: 16px; overflow: hidden; box-shadow: 0 50px 100px -20px rgba(0,0,0,0.8);
-            display: flex; flex-direction: column; height: 80vh;
+        body {
+            margin: 0; padding: 0;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; background: transparent; font-family: 'Outfit', sans-serif;
         }
-
-        /* HEADER */
-        .header { padding: 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); }
-        .title { font-weight: 900; font-size: 1.1rem; color: var(--accent); letter-spacing: 1px; }
-        
-        /* AREA CENTRAL */
-        .content { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #020617; overflow: hidden; }
-        
-        canvas { 
-            max-width: 90%; max-height: 80%; 
-            border: 2px solid #334155; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
-            display: none; 
+        .counter-card {
+            background: #ffffff;
+            border: 8px solid #6366f1; /* Tu color de marca */
+            padding: 30px; border-radius: 40px;
+            text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            width: 320px;
         }
-
-        .placeholder { text-align: center; color: #64748b; }
-        
-        /* CONTROLES ABAJO */
-        .controls { padding: 20px; border-top: 1px solid #334155; display: flex; gap: 10px; background: var(--panel); }
-        
-        .btn {
-            flex: 1; padding: 15px; border: none; border-radius: 8px;
-            font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 0.9rem;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        
-        .btn-upload { background: #334155; color: white; position: relative; overflow: hidden; }
-        .btn-upload input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; top:0; left:0; }
-        
-        .btn-run { background: var(--accent); color: #064e3b; opacity: 0.5; pointer-events: none; }
-        .btn-run.ready { opacity: 1; pointer-events: auto; }
-        
-        .btn-dl { background: #fff; color: #000; display: none; }
-
-        /* BARRA DE PROGRESO SEGURA */
-        .progress-container {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; background: rgba(0,0,0,0.9);
-            display: none; align-items: center; padding: 0 20px; gap: 15px; border-top: 1px solid #334155;
-        }
-        .prog-track { flex: 1; height: 6px; background: #334155; border-radius: 10px; overflow: hidden; }
-        .prog-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.3s linear; }
-        .prog-text { font-size: 0.7rem; font-family: monospace; color: var(--accent); min-width: 40px; }
-        
-        .memory-warn {
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5;
-            padding: 5px 15px; border-radius: 20px; font-size: 0.7rem; display: none;
-        }
+        .label { font-size: 14px; color: #64748b; font-weight: 800; margin-bottom: 15px; letter-spacing: 2px; }
+        .grid { display: flex; justify-content: center; gap: 15px; }
+        .num { font-size: 50px; font-weight: 900; color: #1e293b; line-height: 1; display: block; }
+        .unit { font-size: 10px; color: #94a3b8; font-weight: 700; margin-top: 5px; }
     </style>
 </head>
 <body>
-
-<div class="main-box">
-    <div class="header">
-        <div class="title"><i class="fas fa-shield-alt"></i> IA MODO SEGURO</div>
-        <div id="status" style="font-size:0.7rem; color:#94a3b8;">Cargando motor...</div>
-    </div>
-
-    <div class="content">
-        <div id="warn-msg" class="memory-warn">Imagen muy grande. Se redujo para evitar cierre.</div>
-        
-        <div id="placeholder" class="placeholder">
-            <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 10px;"></i>
-            <div>Sube una imagen</div>
-        </div>
-
-        <canvas id="canvas"></canvas>
-
-        <div class="progress-container" id="progress-ui">
-            <div style="font-size:0.7rem; font-weight:700; color:#fff;">PROCESANDO:</div>
-            <div class="prog-track"><div class="prog-fill" id="prog-bar"></div></div>
-            <div class="prog-text" id="prog-txt">0%</div>
+    <div class="counter-card">
+        <div class="label">FALTAN:</div>
+        <div class="grid">
+            <div><span class="num" id="d">00</span><span class="unit">DÍAS</span></div>
+            <div><span class="num" id="h">00</span><span class="unit">HRS</span></div>
+            <div><span class="num" id="m">00</span><span class="unit">MIN</span></div>
         </div>
     </div>
 
-    <div class="controls">
-        <div class="btn btn-upload">
-            <i class="fas fa-upload"></i> SUBIR
-            <input type="file" accept="image/*" onchange="cargarImagen(this)">
-        </div>
-        <button id="btn-run" class="btn btn-run" onclick="iniciarProcesoSeguro()">
-            <i class="fas fa-play"></i> RESTAURAR (LENTO PERO SEGURO)
-        </button>
-        <button id="btn-dl" class="btn btn-dl" onclick="descargar()">
-            <i class="fas fa-download"></i> GUARDAR
-        </button>
-    </div>
-</div>
-
-<script>
-    let upscaler = null;
-    let imgSegura = null; // Imagen redimensionada si es necesario
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-
-    // 1. CARGA INICIAL
-    window.onload = async function() {
-        const st = document.getElementById('status');
-        if(typeof Upscaler === 'undefined') {
-            st.innerText = "Error de Librerías";
-            st.style.color = "red";
-            return;
-        }
-        
-        try {
-            upscaler = new Upscaler({
-                model: DefaultUpscalerJSModel,
-            });
-            // Calentamiento minúsculo
-            await upscaler.warmup([{patchSize:16, padding:2}]); 
-            st.innerText = "IA LISTA (Modo Estable)";
-            st.style.color = "#10b981";
-        } catch(e) {
-            console.error(e);
-            st.innerText = "Error iniciando motor";
-        }
-    };
-
-    // 2. CARGA INTELIGENTE (REDUCE SI ES GIGANTE)
-    window.cargarImagen = function(input) {
-        if(!input.files[0]) return;
-        
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const tempImg = new Image();
-            tempImg.onload = function() {
-                // ANÁLISIS DE SEGURIDAD
-                let w = tempImg.width;
-                let h = tempImg.height;
-                const MAX_SIZE = 1200; // Límite seguro para navegadores móviles/viejos
-
-                if (w > MAX_SIZE || h > MAX_SIZE) {
-                    document.getElementById('warn-msg').style.display = 'block';
-                    // Calcular nueva escala manteniendo proporción
-                    const ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h);
-                    w = Math.floor(w * ratio);
-                    h = Math.floor(h * ratio);
-                } else {
-                    document.getElementById('warn-msg').style.display = 'none';
-                }
-
-                // Dibujar en canvas al tamaño seguro
-                canvas.width = w;
-                canvas.height = h;
-                // Usamos high quality para la reducción
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                ctx.drawImage(tempImg, 0, 0, w, h);
-                
-                // Guardar esta versión segura como la fuente para la IA
-                imgSegura = new Image();
-                imgSegura.src = canvas.toDataURL();
-                
-                canvas.style.display = 'block';
-                document.getElementById('placeholder').style.display = 'none';
-                
-                // Activar botón
-                if(document.getElementById('status').innerText.includes("LISTA")) {
-                    document.getElementById('btn-run').classList.add('ready');
-                }
-            };
-            tempImg.src = e.target.result;
-        };
-        reader.readAsDataURL(input.files[0]);
-    };
-
-    // 3. PROCESO BLINDADO
-    window.iniciarProcesoSeguro = async function() {
-        if (!upscaler || !imgSegura) return;
-
-        const ui = document.getElementById('progress-ui');
-        const bar = document.getElementById('prog-bar');
-        const txt = document.getElementById('prog-txt');
-        const btn = document.getElementById('btn-run');
-
-        ui.style.display = 'flex';
-        btn.classList.remove('ready'); // Desactivar botón para evitar doble clic
-        
-        try {
-            // EJECUCIÓN CON PARÁMETROS DE SEGURIDAD MÁXIMA
-            const result = await upscaler.upscale(imgSegura, {
-                patchSize: 32,  // <--- ESTA ES LA CLAVE. Muy pequeño = Muy estable.
-                padding: 2,
-                progress: (amount) => {
-                    const p = Math.round(amount * 100);
-                    bar.style.width = p + "%";
-                    txt.innerText = p + "%";
-                }
-            });
-
-            // RESULTADO
-            const finalImg = new Image();
-            finalImg.onload = () => {
-                canvas.width = finalImg.width;
-                canvas.height = finalImg.height;
-                
-                // Aplicar un toque final de contraste para definición
-                ctx.filter = "contrast(1.05) saturate(1.05)";
-                ctx.drawImage(finalImg, 0, 0);
-                ctx.filter = "none";
-                
-                ui.style.display = 'none';
-                btn.style.display = 'none';
-                document.getElementById('btn-dl').style.display = 'flex';
-            };
-            finalImg.src = result;
-
-        } catch(err) {
-            console.error(err);
-            ui.style.display = 'none';
-            alert("Error crítico: " + err.message);
-            btn.classList.add('ready');
-        }
-    };
-
-    window.descargar = function() {
-        const a = document.createElement('a');
-        a.download = "Imagen_Restaurada_Segura.png";
-        a.href = canvas.toDataURL('image/png', 1.0);
-        a.click();
-    };
-</script>
-
+    <script>
+        const target = new Date(2026, 0, 30, 20, 0, 0).getTime();
+        setInterval(() => {
+            const now = new Date().getTime();
+            const diff = target - now;
+            document.getElementById('d').innerText = Math.floor(diff / 86400000);
+            document.getElementById('h').innerText = Math.floor((diff % 86400000) / 3600000);
+            document.getElementById('m').innerText = Math.floor((diff % 3600000) / 60000);
+        }, 1000);
+    </script>
 </body>
 </html>
