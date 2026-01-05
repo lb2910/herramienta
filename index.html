@@ -1,35 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Interactivo Creativas.me</title>
     <meta property="og:type" content="video.other">
-    <meta property="og:title" content="Contador Vivo">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@900&display=swap" rel="stylesheet">
+    <meta property="og:video:url" content="https://tu-usuario.github.io/tu-repo/">
+    <meta property="og:video:type" content="text/html">
+    <meta property="og:video:width" content="500">
+    <meta property="og:video:height" content="300">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: transparent; font-family: 'Outfit', sans-serif; overflow: hidden; }
-        .card { background: #ffffff; border: 8px solid #6366f1; padding: 30px; border-radius: 40px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.1); width: 300px; }
-        .num { font-size: 55px; font-weight: 900; color: #1e293b; line-height: 1; }
-        .label { font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
+        :root { --accent: #6366f1; --text: #1e293b; }
+        body { margin: 0; padding: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background: transparent; font-family: 'Outfit', sans-serif; overflow: hidden; }
+        .widget { background: #ffffff; border: 10px solid var(--accent); padding: 2rem; border-radius: 50px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); width: 350px; transition: transform 0.3s ease; }
+        .title { font-weight: 900; color: #64748b; font-size: 0.9rem; letter-spacing: 3px; margin-bottom: 1.5rem; }
+        .timer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .num { font-size: 4rem; font-weight: 900; color: var(--text); line-height: 0.9; display: block; }
+        .label { font-size: 0.7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-top: 5px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div style="font-size: 12px; color: #64748b; font-weight: 800; margin-bottom: 15px;">FALTAN:</div>
-        <div style="display: flex; gap: 15px; justify-content: center;">
+    <div class="widget">
+        <div class="title">EVENTO COMIENZA EN</div>
+        <div class="timer">
             <div><span class="num" id="d">00</span><div class="label">Días</div></div>
             <div><span class="num" id="h">00</span><div class="label">Hrs</div></div>
             <div><span class="num" id="m">00</span><div class="label">Min</div></div>
         </div>
     </div>
+
     <script>
         const target = new Date(2026, 0, 30, 20, 0, 0).getTime();
-        setInterval(() => {
+        const update = () => {
             const now = new Date().getTime();
             const diff = target - now;
-            document.getElementById('d').innerText = Math.floor(diff / 86400000);
-            document.getElementById('h').innerText = Math.floor((diff % 86400000) / 3600000);
-            document.getElementById('m').innerText = Math.floor((diff % 3600000) / 60000);
-        }, 1000);
+            if (diff > 0) {
+                document.getElementById('d').innerText = Math.floor(diff / 86400000).toString().padStart(2, '0');
+                document.getElementById('h').innerText = Math.floor((diff % 86400000) / 3600000).toString().padStart(2, '0');
+                document.getElementById('m').innerText = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+            }
+            requestAnimationFrame(update);
+        };
+        update();
     </script>
 </body>
 </html>
