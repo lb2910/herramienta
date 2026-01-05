@@ -2,38 +2,39 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Widget Interactivo Creativas.me</title>
+    <title>Reproductor de Tiempo Creativas.me</title>
+    
     <meta property="og:type" content="video.other">
-    <meta property="og:video:url" content="https://tu-usuario.github.io/tu-repo/">
+    <meta property="og:video" content="https://tu-usuario.github.io/tu-repo/">
+    <meta property="og:video:secure_url" content="https://tu-usuario.github.io/tu-repo/">
     <meta property="og:video:type" content="text/html">
-    <meta property="og:video:width" content="500">
-    <meta property="og:video:height" content="300">
+    <meta property="og:video:width" content="600">
+    <meta property="og:video:height" content="400">
     
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --accent: #6366f1; --text: #1e293b; }
-        body { margin: 0; padding: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background: transparent; font-family: 'Outfit', sans-serif; overflow: hidden; }
-        .widget { background: #ffffff; border: 10px solid var(--accent); padding: 2rem; border-radius: 50px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); width: 350px; transition: transform 0.3s ease; }
-        .title { font-weight: 900; color: #64748b; font-size: 0.9rem; letter-spacing: 3px; margin-bottom: 1.5rem; }
-        .timer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-        .num { font-size: 4rem; font-weight: 900; color: var(--text); line-height: 0.9; display: block; }
-        .label { font-size: 0.7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-top: 5px; }
+        body { margin: 0; padding: 0; background: #6366f1; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Outfit', sans-serif; overflow: hidden; }
+        .player-container { background: #ffffff; width: 90%; max-width: 400px; padding: 40px; border-radius: 50px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.3); border: 10px solid #1e293b; }
+        .live-tag { background: #ff4757; color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 900; display: inline-block; margin-bottom: 20px; animation: blink 1s infinite; }
+        .timer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .number { font-size: 4rem; font-weight: 900; color: #1e293b; line-height: 1; }
+        .label { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; margin-top: 5px; }
+        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
-    <div class="widget">
-        <div class="title">EVENTO COMIENZA EN</div>
-        <div class="timer">
-            <div><span class="num" id="d">00</span><div class="label">Días</div></div>
-            <div><span class="num" id="h">00</span><div class="label">Hrs</div></div>
-            <div><span class="num" id="m">00</span><div class="label">Min</div></div>
+    <div class="player-container">
+        <div class="live-tag">● EN VIVO</div>
+        <div class="timer-grid">
+            <div><span class="number" id="d">00</span><div class="label">Días</div></div>
+            <div><span class="number" id="h">00</span><div class="label">Hrs</div></div>
+            <div><span class="number" id="m">00</span><div class="label">Min</div></div>
         </div>
     </div>
 
     <script>
         const target = new Date(2026, 0, 30, 20, 0, 0).getTime();
-        const update = () => {
+        function update() {
             const now = new Date().getTime();
             const diff = target - now;
             if (diff > 0) {
@@ -42,7 +43,7 @@
                 document.getElementById('m').innerText = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
             }
             requestAnimationFrame(update);
-        };
+        }
         update();
     </script>
 </body>
