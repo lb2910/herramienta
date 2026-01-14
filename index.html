@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GIF Compressor - GitHub Final</title>
+    <title>GIF Compressor - V11 (Fix CDN)</title>
     
     <style>
         body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
@@ -41,14 +41,14 @@
         #preview-img { max-width: 100%; margin-top: 20px; border: 1px solid #333; display: none; }
     </style>
 
-    <script src="https://unpkg.com/gifuct-js@2.1.2/dist/gifuct-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/dist/gifuct-js.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
 </head>
 <body>
 
 <div class="container">
-    <h2>GIF OPTIMIZER V10</h2>
+    <h2>GIF OPTIMIZER V11 (JSDelivr)</h2>
     
     <div class="status-bar">
         <div class="light"><div id="dot-1" class="dot"></div> Lib: Lector</div>
@@ -86,7 +86,6 @@
     let resultBlob = null;
     let workerUrl = null;
 
-    // --- LOGGING ---
     function log(msg) {
         const b = document.getElementById('log-box');
         b.innerHTML = `> ${msg}<br>` + b.innerHTML;
@@ -102,9 +101,9 @@
         // Chequeo gifuct-js
         if(typeof parseGIF !== 'undefined') {
             document.getElementById('dot-1').classList.add('ok');
-            log("✅ Librería de Lectura cargada.");
+            log("✅ Librería de Lectura (jsDelivr) cargada.");
         } else {
-            log("❌ ERROR: No cargó gifuct-js. Revisa tu internet.");
+            log("❌ ERROR CRÍTICO: No cargó gifuct-js. Intenta recargar la página.");
         }
 
         // Chequeo gif.js
@@ -124,7 +123,6 @@
                 log("✅ Worker listo en memoria.");
             } catch(e) {
                 log("❌ ERROR Worker: " + e.message);
-                alert("Error cargando componentes. Revisa la consola negra.");
             }
 
         } else {
@@ -144,14 +142,12 @@
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                // Verificar que parseGIF existe antes de usarlo
                 if(typeof parseGIF === 'undefined') throw new Error("Librería de lectura ausente.");
                 
                 const gif = parseGIF(e.target.result);
                 originalFrames = gif.decompressFrames(true);
-                log(`✅ GIF analizado: ${originalFrames.length} frames.`);
+                log(`✅ GIF analizado correctamente: ${originalFrames.length} frames.`);
                 
-                // Activar controles
                 document.getElementById('ctrls').classList.add('active');
             } catch(err) {
                 log(`❌ Error leyendo GIF: ${err.message}`);
@@ -174,11 +170,10 @@
                 quality: quality,
                 width: originalFrames[0].dims.width * scale,
                 height: originalFrames[0].dims.height * scale,
-                workerScript: workerUrl, // Usamos el Blob local
+                workerScript: workerUrl,
                 transparent: 'rgba(0,0,0,0)'
             });
 
-            // Canvas Temporal
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const temp = document.createElement('canvas');
