@@ -1,59 +1,228 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8"/>
-    <title>Widget Creativas.me</title>
-    <meta name="twitter:card" content="player"/>
-    <meta name="twitter:player" content="https://tuusuario.github.io/tu-repo/"/>
-    <meta name="twitter:player:width" content="500"/>
-    <meta name="twitter:player:height" content="500"/>
-    <meta property="og:type" content="video.other"/>
-    <meta property="og:video:url" content="https://tuusuario.github.io/tu-repo/"/>
-    <meta property="og:video:type" content="text/html"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultra GIF Optimizer - GitHub Edition</title>
+    <script src="https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/dist/gifuct-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
     
     <style>
-        /* CSS INCRUSTADO PARA EVITAR FALLOS DE CARGA */
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
-        .wrapper { 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; font-family: sans-serif; 
+        body { margin: 0; background: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; display: flex; justify-content: center; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        
+        #app-container {
+            width: 100%; max-width: 1000px; background: #1e293b; border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; flex-direction: column;
         }
-        .counter-card {
-            background: #ffffff; border: 10px solid #6366f1; 
-            padding: 40px; border-radius: 50px; text-align: center;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.2); width: 320px;
+
+        header { padding: 30px; background: linear-gradient(to right, #6366f1, #a855f7); text-align: center; }
+        header h1 { margin: 0; font-weight: 900; letter-spacing: 1px; font-size: 28px; }
+        header p { margin: 10px 0 0 0; opacity: 0.8; font-size: 14px; }
+
+        .main-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 0; height: 100%; min-height: 500px; }
+        
+        /* PANEL IZQUIERDO */
+        .controls { padding: 30px; border-right: 1px solid #334155; display: flex; flex-direction: column; gap: 20px; }
+        
+        .upload-btn {
+            background: rgba(255,255,255,0.05); border: 2px dashed #6366f1; border-radius: 12px;
+            height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.3s; color: #a5b4fc; font-weight: bold;
         }
-        .unit-grid { display: flex; justify-content: center; gap: 20px; }
-        .num { font-size: 60px; font-weight: 900; color: #1e293b; line-height: 1; display: block; }
-        .label { font-size: 12px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
+        .upload-btn:hover { background: rgba(99, 102, 241, 0.1); border-color: #a855f7; }
+
+        .param-group label { display: block; font-size: 12px; font-weight: bold; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #a855f7; }
+        
+        .btn-action {
+            background: linear-gradient(135deg, #6366f1, #a855f7); border: none; padding: 15px;
+            border-radius: 50px; color: white; font-weight: bold; cursor: pointer;
+            font-size: 16px; margin-top: auto; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+            transition: transform 0.2s;
+        }
+        .btn-action:hover { transform: scale(1.05); }
+        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* PANEL DERECHO */
+        .preview-area { padding: 30px; background: #0f172a; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+        .card h3 { margin: 0 0 15px 0; font-size: 14px; color: #94a3b8; }
+        
+        .img-wrap {
+            width: 100%; min-height: 200px; background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAOwgAADsIBFShKgAAAABh0RVh0U29mdHdhcmUAcGFpbnQubmV0IDQuMC44dvyT9QAAAC1JREFUOE9jTKx695+BAsC48v1/GtUgDQ2AAcD4//9/GtUgDQ2AAcD4//9/GtUgABkYDBKs18O2AAAAAElFTkSuQmCC');
+            display: flex; align-items: center; justify-content: center; border-radius: 8px; overflow: hidden;
+        }
+        .img-wrap img { max-width: 100%; max-height: 400px; }
+
+        .stats { display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px; font-weight: bold; }
+        .stats span { color: #10b981; }
+
+        /* OVERLAY */
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px); z-index: 999; display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.1); border-top-color: #a855f7; border-radius: 50%; animation: spin 1s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-    <div class="wrapper">
-        <div class="counter-card">
-            <div style="font-weight:900; color:#64748b; margin-bottom:20px; letter-spacing:2px;">TIEMPO RESTANTE</div>
-            <div class="unit-grid">
-                <div><span class="num" id="d">00</span><span class="label">Días</span></div>
-                <div><span class="num" id="h">00</span><span class="label">Hrs</span></div>
-                <div><span class="num" id="m">00</span><span class="label">Min</span></div>
+
+<div id="app-container">
+    <header>
+        <h1>💎 GIF OPTIMIZER PRO</h1>
+        <p>Potenciado por GitHub Pages - Sin límites</p>
+    </header>
+    
+    <div class="main-grid">
+        <div class="controls">
+            <div class="upload-btn" onclick="document.getElementById('fileIn').click()">
+                <div style="font-size: 30px; margin-bottom: 10px;">📂</div>
+                <span id="f-name">Subir GIF</span>
+                <input type="file" id="fileIn" accept="image/gif" hidden onchange="handleFile(this)">
+            </div>
+
+            <div class="param-group">
+                <label>Escala (Tamaño): <span id="val-scale" style="color:#a5b4fc">80%</span></label>
+                <input type="range" id="rng-scale" min="30" max="100" value="80" oninput="updateUI()">
+            </div>
+
+            <div class="param-group">
+                <label>Calidad (Menor es mejor): <span id="val-qual" style="color:#a5b4fc">10</span></label>
+                <input type="range" id="rng-qual" min="1" max="30" value="10" oninput="updateUI()">
+            </div>
+
+            <button class="btn-action" onclick="processGIF()" id="btn-go" disabled>⚡ PROCESAR</button>
+        </div>
+
+        <div class="preview-area">
+            <div class="card">
+                <h3>VISTA PREVIA</h3>
+                <div class="img-wrap" id="preview-box">
+                    <span style="opacity:0.3">Aquí verás el resultado</span>
+                </div>
+                <div class="stats" id="res-stats" style="display:none;">
+                    <div>Peso: <span id="txt-size" style="color:white">0 MB</span></div>
+                    <div>Ahorro: <span id="txt-save">0%</span></div>
+                </div>
+                <button class="btn-action" id="btn-down" style="display:none; margin-top:15px; background:#10b981;" onclick="download()">⬇️ DESCARGAR</button>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        // LÓGICA SIN DEPENDENCIAS
-        const target = new Date(2026, 0, 30, 20, 0, 0).getTime();
-        function update() {
-            const now = new Date().getTime();
-            const diff = target - now;
-            if (diff > 0) {
-                document.getElementById('d').textContent = Math.floor(diff / 86400000).toString().padStart(2, '0');
-                document.getElementById('h').textContent = Math.floor((diff % 86400000) / 3600000).toString().padStart(2, '0');
-                document.getElementById('m').textContent = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
-            }
+<div id="overlay">
+    <div class="spinner"></div>
+    <h3 style="margin-top: 20px;">Optimizando...</h3>
+    <p>Usando Multithreading</p>
+</div>
+
+<script>
+    let originalFile = null;
+    let originalFrames = [];
+    let resultBlob = null;
+
+    function updateUI() {
+        document.getElementById('val-scale').innerText = document.getElementById('rng-scale').value + "%";
+        document.getElementById('val-qual').innerText = document.getElementById('rng-qual').value;
+    }
+
+    function formatBytes(bytes) {
+        if(bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + ['Bytes', 'KB', 'MB', 'GB'][i];
+    }
+
+    function handleFile(input) {
+        if(input.files && input.files[0]) {
+            originalFile = input.files[0];
+            document.getElementById('f-name').innerText = originalFile.name;
+            document.getElementById('btn-go').disabled = false;
+            
+            // Preview rápido
+            document.getElementById('preview-box').innerHTML = `<img src="${URL.createObjectURL(originalFile)}">`;
+            
+            // Leer Frames
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const gif = parseGIF(e.target.result);
+                originalFrames = gif.decompressFrames(true);
+            };
+            reader.readAsArrayBuffer(originalFile);
         }
-        setInterval(update, 1000);
-        update();
-    </script>
+    }
+
+    async function processGIF() {
+        if(!originalFrames.length) return;
+        document.getElementById('overlay').style.display = 'flex';
+
+        // Pequeña pausa para UI
+        await new Promise(r => setTimeout(r, 100));
+
+        const scale = parseInt(document.getElementById('rng-scale').value) / 100;
+        const quality = parseInt(document.getElementById('rng-qual').value);
+
+        // CONFIGURACIÓN DE WORKER (Esto es lo que falla en Blogger pero vuela en GitHub)
+        const workerBlob = new Blob([`importScripts('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');`], { type: 'application/javascript' });
+        
+        const gif = new GIF({
+            workers: 4, // USAMOS 4 NÚCLEOS (Potencia pura)
+            quality: quality,
+            width: originalFrames[0].dims.width * scale,
+            height: originalFrames[0].dims.height * scale,
+            workerScript: URL.createObjectURL(workerBlob),
+            transparent: 'rgba(0,0,0,0)'
+        });
+
+        // Procesar Frames
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+
+        originalFrames.forEach(frame => {
+            tempCanvas.width = frame.dims.width;
+            tempCanvas.height = frame.dims.height;
+            tempCtx.putImageData(new ImageData(frame.patch, frame.dims.width, frame.dims.height), 0, 0);
+
+            canvas.width = frame.dims.width * scale;
+            canvas.height = frame.dims.height * scale;
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+
+            gif.addFrame(ctx, {copy: true, delay: frame.delay});
+        });
+
+        gif.on('finished', blob => {
+            resultBlob = blob;
+            const url = URL.createObjectURL(blob);
+            
+            document.getElementById('preview-box').innerHTML = `<img src="${url}">`;
+            document.getElementById('txt-size').innerText = formatBytes(blob.size);
+            
+            const saved = ((originalFile.size - blob.size) / originalFile.size * 100).toFixed(0);
+            document.getElementById('txt-save').innerText = saved > 0 ? `-${saved}%` : '+0%';
+            
+            document.getElementById('res-stats').style.display = 'flex';
+            document.getElementById('btn-down').style.display = 'block';
+            document.getElementById('overlay').style.display = 'none';
+        });
+
+        gif.render();
+    }
+
+    function download() {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(resultBlob);
+        a.download = 'optimized.gif';
+        a.click();
+    }
+</script>
+
 </body>
 </html>
