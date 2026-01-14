@@ -3,234 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GIF Compressor - V14 (ES Modules)</title>
-    
+    <title>GIF Compressor - V15 (Auto-Repair)</title>
     <style>
-        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { max-width: 600px; width: 100%; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; min-height: 100vh; }
         
-        .upload-box { 
-            border: 2px dashed #6366f1; padding: 40px; text-align: center; cursor: pointer; 
-            border-radius: 8px; margin-bottom: 20px; transition: 0.3s; background: rgba(99, 102, 241, 0.1); font-weight: bold;
+        .main-card {
+            background: #1e293b; width: 100%; max-width: 650px; border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); overflow: hidden; border: 1px solid #334155;
         }
-        .upload-box:hover { background: rgba(99, 102, 241, 0.2); }
 
-        .controls { opacity: 0.5; pointer-events: none; transition: 0.3s; }
-        .controls.active { opacity: 1; pointer-events: all; }
+        .header { background: #000; padding: 15px; text-align: center; border-bottom: 1px solid #333; }
+        .header h2 { margin: 0; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        input[type=range] { width: 100%; margin: 10px 0 20px 0; accent-color: #8b5cf6; }
+        .content { padding: 30px; }
+
+        /* Consola de Sistema */
+        .system-log {
+            background: #000; border: 1px solid #333; color: #00ff00; font-family: monospace;
+            font-size: 11px; height: 120px; overflow-y: auto; padding: 10px; margin-bottom: 20px;
+            border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+        }
+        .log-line { margin-bottom: 2px; border-bottom: 1px solid #111; padding-bottom: 2px; }
+        .log-err { color: #ef4444; }
+        .log-ok { color: #22c55e; }
+        .log-warn { color: #f59e0b; }
+
+        /* UI Principal */
+        #app-ui { display: none; opacity: 0; transition: opacity 0.5s; }
+        #app-ui.visible { display: block; opacity: 1; }
+
+        .upload-area {
+            border: 2px dashed #475569; padding: 30px; text-align: center; border-radius: 12px;
+            cursor: pointer; transition: 0.2s; background: rgba(255,255,255,0.02);
+        }
+        .upload-area:hover { border-color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
+
+        .controls { margin-top: 20px; padding: 20px; background: #0f172a; border-radius: 8px; }
         
-        button {
-            background: #8b5cf6; color: white; border: none; padding: 15px; width: 100%;
-            border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;
-        }
-        button:hover { background: #7c3aed; }
+        input[type=range] { width: 100%; accent-color: #38bdf8; margin: 10px 0 20px 0; cursor: pointer; }
+        label { font-size: 12px; font-weight: bold; color: #94a3b8; display: flex; justify-content: space-between; }
 
-        #log-box { 
-            width: 100%; height: 100px; background: #000; color: #00ff00; 
-            font-family: monospace; font-size: 11px; padding: 10px; 
-            border: 1px solid #333; margin-top: 20px; overflow-y: scroll; box-sizing: border-box;
+        .btn-action {
+            background: linear-gradient(135deg, #38bdf8, #818cf8); color: white; border: none;
+            padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px;
+            cursor: pointer; transition: 0.2s;
         }
-        
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(56, 189, 248, 0.3); }
+
+        .preview-box {
+            margin-top: 20px; border: 1px solid #334155; min-height: 200px;
+            display: flex; align-items: center; justify-content: center; background: #020617;
+            border-radius: 8px; overflow: hidden; position: relative;
+        }
+        .preview-box img { max-width: 100%; max-height: 400px; }
+
+        /* Overlay */
         #overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 999;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); z-index: 10; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
         }
         .spinner {
-            width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.1);
-            border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s infinite linear;
+            width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1);
+            border-left-color: #38bdf8; border-radius: 50%; animation: spin 0.8s infinite linear;
         }
-        @keyframes spin { to {transform: rotate(360deg);} }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        #preview-img { max-width: 100%; margin-top: 20px; border: 1px solid #333; display: none; }
     </style>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
-
 </head>
 <body>
 
-<div id="overlay">
-    <div class="spinner"></div>
-    <h3 style="margin-top:20px">Procesando...</h3>
-</div>
-
-<div class="container">
-    <h2>GIF OPTIMIZER V14 (Modules)</h2>
-    
-    <input type="file" id="fileIn" accept="image/gif" hidden>
-    <div class="upload-box" id="drop-zone">
-        📂 SUBIR GIF AQUÍ
+<div class="main-card">
+    <div class="header">
+        <h2>GIF OPTIMIZER V15</h2>
     </div>
 
-    <div class="controls" id="ctrls">
-        <label>ESCALA: <span id="v-scale">70%</span></label>
-        <input type="range" id="rng-scale" min="30" max="100" value="70">
-        
-        <label>CALIDAD (10): <span id="v-qual">10</span></label>
-        <input type="range" id="rng-qual" min="1" max="20" value="10">
-        
-        <button id="btn-process">🚀 PROCESAR</button>
+    <div class="content" style="position:relative">
+        <div id="overlay">
+            <div class="spinner"></div>
+            <p style="margin-top:15px; font-size:14px; color:#cbd5e1">Procesando...</p>
+        </div>
+
+        <div id="sys-log" class="system-log">
+            <div class="log-line">Iniciando secuencia de arranque...</div>
+        </div>
+
+        <div id="app-ui">
+            <input type="file" id="fileIn" accept="image/gif" hidden>
+            <div class="upload-area" onclick="document.getElementById('fileIn').click()">
+                <div style="font-size:24px; margin-bottom:10px">📂</div>
+                <div id="upload-text">Clic para subir GIF</div>
+            </div>
+
+            <div class="controls" id="ctrl-panel" style="opacity:0.5; pointer-events:none;">
+                <label>ESCALA <span id="lbl-scale">70%</span></label>
+                <input type="range" id="rng-scale" min="30" max="100" value="70" oninput="uiUpdate()">
+
+                <label>CALIDAD <span id="lbl-qual">10</span></label>
+                <input type="range" id="rng-qual" min="1" max="20" value="10" oninput="uiUpdate()">
+
+                <button class="btn-action" onclick="startProcess()">🚀 OPTIMIZAR AHORA</button>
+            </div>
+
+            <div class="preview-box" id="preview-container">
+                <span style="color:#475569; font-size:12px;">Vista previa</span>
+            </div>
+            
+            <div id="results" style="display:none; margin-top:15px; justify-content:space-between; font-weight:bold; font-size:13px;">
+                <span id="res-data" style="color:#fff"></span>
+                <a id="dl-link" href="#" download="optimizado.gif" style="color:#38bdf8">DESCARGAR</a>
+            </div>
+        </div>
     </div>
-
-    <img id="preview-img" src="">
-    <div id="stats" style="margin-top:10px; font-weight:bold; color:#22c55e;"></div>
-    
-    <button id="btn-dl" style="display:none; margin-top:10px; background:#22c55e">⬇️ DESCARGAR</button>
-
-    <div id="log-box">Iniciando sistema moderno...</div>
 </div>
 
-<script type="module">
-    // IMPORTAMOS EL LECTOR DIRECTAMENTE COMO MÓDULO (Esto no puede fallar por nombres globales)
-    import { parseGIF, decompressFrames } from 'https://cdn.skypack.dev/gifuct-js';
-
-    // VARIABLES
-    let originalFile = null;
-    let parsedFrames = [];
-    let workerUrl = null;
-    let resultBlob = null;
-
-    // ELEMENTOS UI
-    const logBox = document.getElementById('log-box');
-    const fileIn = document.getElementById('fileIn');
-    const dropZone = document.getElementById('drop-zone');
-    const btnProcess = document.getElementById('btn-process');
-    const btnDl = document.getElementById('btn-dl');
-
-    // LOGGING
-    function log(msg) {
-        logBox.innerHTML = `> ${msg}<br>` + logBox.innerHTML;
+<script>
+    // --- 1. SISTEMA DE LOGS ---
+    function log(msg, type = 'normal') {
+        const box = document.getElementById('sys-log');
+        const div = document.createElement('div');
+        div.className = 'log-line ' + (type === 'err' ? 'log-err' : type === 'ok' ? 'log-ok' : '');
+        div.innerText = `> ${msg}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
     }
 
-    // INICIALIZACIÓN
-    log("✅ Sistema de Módulos iniciado.");
-    
-    // Preparar Worker (Ya sabemos que esto te funciona)
-    async function setupWorker() {
+    // --- 2. CARGADOR DE LIBRERÍAS (MULTI-SERVIDOR) ---
+    const LIBS = {
+        omggif: [
+            'https://cdnjs.cloudflare.com/ajax/libs/omggif/1.0.10/omggif.min.js', // Opción 1
+            'https://unpkg.com/omggif@1.0.10/omggif.js',                         // Opción 2
+            'https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.min.js'           // Opción 3
+        ],
+        gifjs: [
+            'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js',
+            'https://unpkg.com/gif.js@0.2.0/dist/gif.js',
+            'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js'
+        ]
+    };
+
+    async function loadScript(urls, name) {
+        for (const url of urls) {
+            log(`Intentando cargar ${name} desde: ${new URL(url).hostname}...`);
+            try {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+                log(`✅ ${name} cargado correctamente.`, 'ok');
+                return true;
+            } catch (e) {
+                log(`⚠️ Falló ${url}. Probando siguiente...`, 'warn');
+            }
+        }
+        log(`❌ ERROR FATAL: No se pudo cargar ${name}.`, 'err');
+        return false;
+    }
+
+    // --- 3. INICIALIZACIÓN ---
+    let workerUrl = null;
+    let OmggifRef = null;
+
+    async function init() {
+        // Cargar Lector
+        const r1 = await loadScript(LIBS.omggif, 'Lector GIF');
+        // Cargar Escritor
+        const r2 = await loadScript(LIBS.gifjs, 'Escritor GIF');
+
+        if (r1 && r2) {
+            // Validar Omggif
+            if(typeof Omggif !== 'undefined') OmggifRef = Omggif;
+            else if(typeof omggif !== 'undefined') OmggifRef = omggif;
+            
+            if(!OmggifRef) { log("❌ Error interno: Objeto Omggif no encontrado.", 'err'); return; }
+
+            // Cargar Worker
+            loadWorker();
+            
+            // Mostrar UI
+            document.getElementById('app-ui').classList.add('visible');
+            log("✨ SISTEMA LISTO PARA USAR.", 'ok');
+        } else {
+            alert("Error de red: Algunas librerías no cargaron. Revisa el registro negro.");
+        }
+    }
+
+    async function loadWorker() {
+        log("Configurando Worker...");
         try {
+            // Intentamos descargar el worker textualmente para evitar CORS
             const resp = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
             const txt = await resp.text();
             const blob = new Blob([txt], {type: 'application/javascript'});
             workerUrl = URL.createObjectURL(blob);
-            log("✅ Worker cargado en memoria.");
+            log("✅ Worker configurado en memoria.", 'ok');
         } catch(e) {
-            log("⚠️ Falló carga de worker local. Se intentará remoto.");
+            log("⚠️ Falló descarga de Worker. Usando modo compatibilidad.", 'warn');
         }
     }
-    setupWorker();
 
-    // LISTENERS
-    dropZone.onclick = () => fileIn.click();
+    // Arrancar
+    init();
+
+    // --- 4. LÓGICA DE LA APP ---
+    let originalFile = null;
+    let gifReader = null;
     
-    document.getElementById('rng-scale').oninput = (e) => {
-        document.getElementById('v-scale').innerText = e.target.value + "%";
-    }
-    document.getElementById('rng-qual').oninput = (e) => {
-        document.getElementById('v-qual').innerText = e.target.value;
+    function uiUpdate() {
+        document.getElementById('lbl-scale').innerText = document.getElementById('rng-scale').value + "%";
+        document.getElementById('lbl-qual').innerText = document.getElementById('rng-qual').value;
     }
 
-    // MANEJO DE ARCHIVO
-    fileIn.onchange = (e) => {
+    document.getElementById('fileIn').onchange = function(e) {
         if(!e.target.files[0]) return;
         originalFile = e.target.files[0];
-        log(`📂 Archivo: ${originalFile.name}`);
+        
+        document.getElementById('upload-text').innerText = originalFile.name;
+        log(`Archivo cargado: ${originalFile.name}`);
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = (ev) => {
             try {
-                // AQUÍ USAMOS LAS FUNCIONES IMPORTADAS
-                const gif = parseGIF(event.target.result);
-                parsedFrames = decompressFrames(gif, true);
+                const u8 = new Uint8Array(ev.target.result);
+                gifReader = new OmggifRef.GifReader(u8);
+                log(`GIF Válido: ${gifReader.numFrames()} cuadros.`);
                 
-                log(`✅ Frames leídos: ${parsedFrames.length}`);
-                document.getElementById('ctrls').classList.add('active');
+                document.getElementById('ctrl-panel').style.opacity = "1";
+                document.getElementById('ctrl-panel').style.pointerEvents = "all";
             } catch(err) {
-                log(`❌ Error Lector: ${err.message}`);
-                alert("Error al leer el GIF.");
+                log("❌ El archivo no es un GIF válido.", 'err');
+                alert("Archivo inválido.");
             }
         };
         reader.readAsArrayBuffer(originalFile);
     };
 
-    // PROCESAMIENTO
-    btnProcess.onclick = () => {
+    function startProcess() {
         document.getElementById('overlay').style.display = 'flex';
-        setTimeout(runEngine, 100);
-    };
+        // Delay para render
+        setTimeout(processGIF, 100);
+    }
 
-    function runEngine() {
+    function processGIF() {
         try {
             const scale = parseInt(document.getElementById('rng-scale').value) / 100;
             const quality = parseInt(document.getElementById('rng-qual').value);
             
-            // Configurar GIF.js (Este viene del script global antiguo, que sí funcionó)
-            const gifConfig = {
+            const newW = Math.floor(gifReader.width * scale);
+            const newH = Math.floor(gifReader.height * scale);
+            
+            const config = {
                 workers: 2,
                 quality: quality,
-                width: parsedFrames[0].dims.width * scale,
-                height: parsedFrames[0].dims.height * scale,
-                transparent: 'rgba(0,0,0,0)'
+                width: newW,
+                height: newH,
+                transparent: 'rgba(0,0,0,0)' // Fondo transparente
             };
-            if(workerUrl) gifConfig.workerScript = workerUrl;
+            if(workerUrl) config.workerScript = workerUrl;
 
-            const gif = new GIF(gifConfig);
+            const gif = new GIF(config);
 
             // Canvas setup
-            const canvas = document.createElement('canvas');
-            canvas.width = gifConfig.width;
-            canvas.height = gifConfig.height;
-            const ctx = canvas.getContext('2d');
+            const cvs = document.createElement('canvas');
+            cvs.width = newW; cvs.height = newH;
+            const ctx = cvs.getContext('2d');
 
-            const temp = document.createElement('canvas');
-            const tctx = temp.getContext('2d');
+            const tmp = document.createElement('canvas');
+            tmp.width = gifReader.width; tmp.height = gifReader.height;
+            const tctx = tmp.getContext('2d');
 
-            log(`Procesando ${parsedFrames.length} cuadros...`);
+            const pixels = new Uint8ClampedArray(gifReader.width * gifReader.height * 4);
 
-            parsedFrames.forEach(frame => {
-                temp.width = frame.dims.width;
-                temp.height = frame.dims.height;
-                const imgData = new ImageData(frame.patch, frame.dims.width, frame.dims.height);
+            log(`Procesando ${gifReader.numFrames()} cuadros...`);
+
+            for(let i=0; i<gifReader.numFrames(); i++) {
+                // Decodificar con Omggif
+                gifReader.decodeAndBlitFrameRGBA(i, pixels);
+                const imgData = new ImageData(pixels, gifReader.width, gifReader.height);
                 tctx.putImageData(imgData, 0, 0);
 
-                ctx.clearRect(0,0,canvas.width,canvas.height);
-                ctx.drawImage(temp, 0, 0, canvas.width, canvas.height);
+                // Escalar
+                ctx.clearRect(0, 0, newW, newH);
+                ctx.drawImage(tmp, 0, 0, newW, newH);
 
-                gif.addFrame(ctx, {copy: true, delay: frame.delay});
-            });
+                // Agregar a gif.js
+                // Info para delay
+                const info = gifReader.frameInfo(i);
+                gif.addFrame(ctx, {copy: true, delay: info.delay * 10});
+            }
 
-            gif.on('finished', (blob) => {
-                resultBlob = blob;
+            gif.on('finished', blob => {
                 const url = URL.createObjectURL(blob);
-                const img = document.getElementById('preview-img');
-                img.src = url;
-                img.style.display = 'block';
+                document.getElementById('preview-container').innerHTML = `<img src="${url}">`;
                 
                 const saved = ((originalFile.size - blob.size) / originalFile.size * 100).toFixed(0);
-                document.getElementById('stats').innerText = `Peso Final: ${(blob.size/1024).toFixed(1)} KB (Ahorro: ${saved}%)`;
+                document.getElementById('res-data').innerText = `Ahorro: ${saved}% (${(blob.size/1024).toFixed(0)} KB)`;
                 
-                btnDl.style.display = 'block';
+                const dl = document.getElementById('dl-link');
+                dl.href = url;
+                
+                document.getElementById('results').style.display = 'flex';
                 document.getElementById('overlay').style.display = 'none';
-                log("✨ ÉXITO.");
+                log("✅ PROCESO COMPLETADO.", 'ok');
             });
 
             gif.render();
 
         } catch(e) {
             document.getElementById('overlay').style.display = 'none';
-            log(`❌ ERROR: ${e.message}`);
-            alert(e.message);
+            log(`❌ ERROR: ${e.message}`, 'err');
+            alert("Error: " + e.message);
         }
     }
-
-    // DESCARGA
-    btnDl.onclick = () => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(resultBlob);
-        a.download = 'optimizado.gif';
-        a.click();
-    };
 </script>
 
 </body>
