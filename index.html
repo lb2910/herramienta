@@ -3,18 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GIF Compressor - V13 (Multi-Server)</title>
+    <title>GIF Compressor - V14 (ES Modules)</title>
     
     <style>
         body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .container { max-width: 600px; width: 100%; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
-        .status-bar { display: flex; gap: 10px; margin-bottom: 20px; background: #000; padding: 10px; border-radius: 8px; font-size: 12px; font-family: monospace; }
-        .light { display: flex; align-items: center; gap: 5px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; } 
-        .dot.ok { background: #22c55e; box-shadow: 0 0 5px #22c55e; } 
-        .dot.warn { background: #f59e0b; box-shadow: 0 0 5px #f59e0b; }
-
         .upload-box { 
             border: 2px dashed #6366f1; padding: 40px; text-align: center; cursor: pointer; 
             border-radius: 8px; margin-bottom: 20px; transition: 0.3s; background: rgba(99, 102, 241, 0.1); font-weight: bold;
@@ -53,8 +47,6 @@
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/omggif/1.0.10/omggif.min.js"></script>
 
 </head>
 <body>
@@ -65,202 +57,148 @@
 </div>
 
 <div class="container">
-    <h2>GIF OPTIMIZER V13</h2>
+    <h2>GIF OPTIMIZER V14 (Modules)</h2>
     
-    <div class="status-bar">
-        <div class="light"><div id="dot-1" class="dot"></div> Lector</div>
-        <div class="light"><div id="dot-2" class="dot"></div> Escritor</div>
-        <div class="light"><div id="dot-3" class="dot"></div> Worker</div>
-    </div>
-
-    <input type="file" id="fileIn" accept="image/gif" hidden onchange="handleUpload(this)">
-    <div class="upload-box" onclick="document.getElementById('fileIn').click()">
+    <input type="file" id="fileIn" accept="image/gif" hidden>
+    <div class="upload-box" id="drop-zone">
         📂 SUBIR GIF AQUÍ
     </div>
 
     <div class="controls" id="ctrls">
         <label>ESCALA: <span id="v-scale">70%</span></label>
-        <input type="range" id="rng-scale" min="30" max="100" value="70" oninput="updateUI()">
+        <input type="range" id="rng-scale" min="30" max="100" value="70">
         
         <label>CALIDAD (10): <span id="v-qual">10</span></label>
-        <input type="range" id="rng-qual" min="1" max="20" value="10" oninput="updateUI()">
+        <input type="range" id="rng-qual" min="1" max="20" value="10">
         
-        <button onclick="triggerProcess()">🚀 PROCESAR</button>
+        <button id="btn-process">🚀 PROCESAR</button>
     </div>
 
     <img id="preview-img" src="">
     <div id="stats" style="margin-top:10px; font-weight:bold; color:#22c55e;"></div>
     
-    <button id="btn-dl" style="display:none; margin-top:10px; background:#22c55e" onclick="download()">⬇️ DESCARGAR</button>
+    <button id="btn-dl" style="display:none; margin-top:10px; background:#22c55e">⬇️ DESCARGAR</button>
 
-    <div id="log-box">Iniciando sistema...</div>
+    <div id="log-box">Iniciando sistema moderno...</div>
 </div>
 
-<script>
-    // --- VARIABLES ---
+<script type="module">
+    // IMPORTAMOS EL LECTOR DIRECTAMENTE COMO MÓDULO (Esto no puede fallar por nombres globales)
+    import { parseGIF, decompressFrames } from 'https://cdn.skypack.dev/gifuct-js';
+
+    // VARIABLES
     let originalFile = null;
-    let gifReader = null; 
-    let resultBlob = null;
+    let parsedFrames = [];
     let workerUrl = null;
-    let OmggifLib = null; // Guardará la referencia correcta
+    let resultBlob = null;
 
+    // ELEMENTOS UI
+    const logBox = document.getElementById('log-box');
+    const fileIn = document.getElementById('fileIn');
+    const dropZone = document.getElementById('drop-zone');
+    const btnProcess = document.getElementById('btn-process');
+    const btnDl = document.getElementById('btn-dl');
+
+    // LOGGING
     function log(msg) {
-        const b = document.getElementById('log-box');
-        b.innerHTML = `> ${msg}<br>` + b.innerHTML;
+        logBox.innerHTML = `> ${msg}<br>` + logBox.innerHTML;
     }
 
-    function updateUI() {
-        document.getElementById('v-scale').innerText = document.getElementById('rng-scale').value + "%";
-        document.getElementById('v-qual').innerText = document.getElementById('rng-qual').value;
+    // INICIALIZACIÓN
+    log("✅ Sistema de Módulos iniciado.");
+    
+    // Preparar Worker (Ya sabemos que esto te funciona)
+    async function setupWorker() {
+        try {
+            const resp = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+            const txt = await resp.text();
+            const blob = new Blob([txt], {type: 'application/javascript'});
+            workerUrl = URL.createObjectURL(blob);
+            log("✅ Worker cargado en memoria.");
+        } catch(e) {
+            log("⚠️ Falló carga de worker local. Se intentará remoto.");
+        }
+    }
+    setupWorker();
+
+    // LISTENERS
+    dropZone.onclick = () => fileIn.click();
+    
+    document.getElementById('rng-scale').oninput = (e) => {
+        document.getElementById('v-scale').innerText = e.target.value + "%";
+    }
+    document.getElementById('rng-qual').oninput = (e) => {
+        document.getElementById('v-qual').innerText = e.target.value;
     }
 
-    // --- CARGA DE LIBRERÍAS DE EMERGENCIA ---
-    async function loadBackupLibrary() {
-        log("⚠️ CDNJS falló. Intentando servidor de respaldo (UNPKG)...");
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/omggif@1.0.10/omggif.min.js';
-            script.onload = () => resolve(true);
-            script.onerror = () => reject(false);
-            document.head.appendChild(script);
-        });
-    }
-
-    // --- 1. VERIFICACIÓN Y CORRECCIÓN (AL INICIO) ---
-    window.onload = async function() {
-        
-        // --- PARTE A: REPARAR LECTOR (Omggif) ---
-        // A veces carga como 'Omggif', a veces como 'omggif' (minúscula)
-        if(typeof Omggif !== 'undefined') {
-            OmggifLib = Omggif;
-        } else if (typeof omggif !== 'undefined') {
-            OmggifLib = omggif;
-        } else {
-            // Si falló CDNJS, intentamos el respaldo
-            try {
-                await loadBackupLibrary();
-                if(typeof Omggif !== 'undefined') OmggifLib = Omggif;
-                else if (typeof omggif !== 'undefined') OmggifLib = omggif;
-            } catch(e) {
-                log("❌ ERROR FATAL: No se pudo cargar el Lector desde ningún servidor.");
-            }
-        }
-
-        if(OmggifLib) {
-            document.getElementById('dot-1').classList.add('ok');
-            log("✅ Lector cargado correctamente.");
-        } else {
-            log("❌ ERROR: El Lector no está disponible.");
-        }
-
-        // --- PARTE B: ESCRITOR (gif.js) ---
-        if(typeof GIF !== 'undefined') {
-            document.getElementById('dot-2').classList.add('ok');
-            log("✅ Escritor cargado.");
-            
-            // PRE-CARGAR WORKER
-            try {
-                log("🔄 Preparando Worker...");
-                const resp = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
-                if(!resp.ok) throw new Error("Red bloqueada");
-                const txt = await resp.text();
-                const blob = new Blob([txt], {type: 'application/javascript'});
-                workerUrl = URL.createObjectURL(blob);
-                document.getElementById('dot-3').classList.add('ok');
-                log("✅ Worker listo en memoria.");
-            } catch(e) {
-                log("⚠️ Worker remoto falló. Usando modo lento.");
-                document.getElementById('dot-3').classList.add('warn');
-            }
-        } else {
-            log("❌ ERROR: Escritor no cargó.");
-        }
-    };
-
-    // --- 2. LECTURA ---
-    function handleUpload(input) {
-        if(!input.files[0]) return;
-        if(!OmggifLib) { alert("La librería de lectura no cargó. Recarga la página."); return; }
-        
-        originalFile = input.files[0];
+    // MANEJO DE ARCHIVO
+    fileIn.onchange = (e) => {
+        if(!e.target.files[0]) return;
+        originalFile = e.target.files[0];
         log(`📂 Archivo: ${originalFile.name}`);
 
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = (event) => {
             try {
-                const u8Array = new Uint8Array(e.target.result);
-                // Usamos la referencia corregida OmggifLib
-                gifReader = new OmggifLib.GifReader(u8Array);
+                // AQUÍ USAMOS LAS FUNCIONES IMPORTADAS
+                const gif = parseGIF(event.target.result);
+                parsedFrames = decompressFrames(gif, true);
                 
-                log(`✅ Frames: ${gifReader.numFrames()} | Tamaño: ${gifReader.width}x${gifReader.height}`);
+                log(`✅ Frames leídos: ${parsedFrames.length}`);
                 document.getElementById('ctrls').classList.add('active');
             } catch(err) {
-                log(`❌ Error leyendo GIF: ${err.message}`);
-                alert("El archivo no es válido o está dañado.");
+                log(`❌ Error Lector: ${err.message}`);
+                alert("Error al leer el GIF.");
             }
         };
         reader.readAsArrayBuffer(originalFile);
-    }
+    };
 
-    // --- 3. PROCESAMIENTO ---
-    function triggerProcess() {
+    // PROCESAMIENTO
+    btnProcess.onclick = () => {
         document.getElementById('overlay').style.display = 'flex';
         setTimeout(runEngine, 100);
-    }
+    };
 
     function runEngine() {
         try {
             const scale = parseInt(document.getElementById('rng-scale').value) / 100;
             const quality = parseInt(document.getElementById('rng-qual').value);
             
-            const newWidth = Math.floor(gifReader.width * scale);
-            const newHeight = Math.floor(gifReader.height * scale);
-
-            // Configuración del GIF nuevo
+            // Configurar GIF.js (Este viene del script global antiguo, que sí funcionó)
             const gifConfig = {
                 workers: 2,
                 quality: quality,
-                width: newWidth,
-                height: newHeight,
+                width: parsedFrames[0].dims.width * scale,
+                height: parsedFrames[0].dims.height * scale,
                 transparent: 'rgba(0,0,0,0)'
             };
-            
-            // Si logramos cargar el worker local, lo usamos. Si no, gif.js intentará buscarlo.
             if(workerUrl) gifConfig.workerScript = workerUrl;
 
             const gif = new GIF(gifConfig);
 
-            // Canvas
+            // Canvas setup
             const canvas = document.createElement('canvas');
-            canvas.width = newWidth;
-            canvas.height = newHeight;
+            canvas.width = gifConfig.width;
+            canvas.height = gifConfig.height;
             const ctx = canvas.getContext('2d');
 
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = gifReader.width;
-            tempCanvas.height = gifReader.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            
-            const pixels = new Uint8ClampedArray(gifReader.width * gifReader.height * 4);
+            const temp = document.createElement('canvas');
+            const tctx = temp.getContext('2d');
 
-            log(`Procesando ${gifReader.numFrames()} frames...`);
+            log(`Procesando ${parsedFrames.length} cuadros...`);
 
-            for(let i=0; i < gifReader.numFrames(); i++) {
-                // Decodificar frame (Librería Omggif)
-                gifReader.decodeAndBlitFrameRGBA(i, pixels);
-                
-                const imgData = new ImageData(pixels, gifReader.width, gifReader.height);
-                tempCtx.putImageData(imgData, 0, 0);
+            parsedFrames.forEach(frame => {
+                temp.width = frame.dims.width;
+                temp.height = frame.dims.height;
+                const imgData = new ImageData(frame.patch, frame.dims.width, frame.dims.height);
+                tctx.putImageData(imgData, 0, 0);
 
-                // Escalar
-                ctx.clearRect(0, 0, newWidth, newHeight);
-                ctx.drawImage(tempCanvas, 0, 0, newWidth, newHeight);
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.drawImage(temp, 0, 0, canvas.width, canvas.height);
 
-                // Agregar
-                const frameInfo = gifReader.frameInfo(i);
-                // Omggif usa centésimas de segundo, gif.js usa milisegundos (x10)
-                gif.addFrame(ctx, {copy: true, delay: frameInfo.delay * 10}); 
-            }
+                gif.addFrame(ctx, {copy: true, delay: frame.delay});
+            });
 
             gif.on('finished', (blob) => {
                 resultBlob = blob;
@@ -272,27 +210,27 @@
                 const saved = ((originalFile.size - blob.size) / originalFile.size * 100).toFixed(0);
                 document.getElementById('stats').innerText = `Peso Final: ${(blob.size/1024).toFixed(1)} KB (Ahorro: ${saved}%)`;
                 
-                document.getElementById('btn-dl').style.display = 'block';
+                btnDl.style.display = 'block';
                 document.getElementById('overlay').style.display = 'none';
-                log("✨ ¡PROCESO FINALIZADO!");
+                log("✨ ÉXITO.");
             });
 
-            log("Generando archivo...");
             gif.render();
 
         } catch(e) {
             document.getElementById('overlay').style.display = 'none';
-            log(`❌ CRASH: ${e.message}`);
-            alert("Error: " + e.message);
+            log(`❌ ERROR: ${e.message}`);
+            alert(e.message);
         }
     }
 
-    function download() {
+    // DESCARGA
+    btnDl.onclick = () => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(resultBlob);
         a.download = 'optimizado.gif';
         a.click();
-    }
+    };
 </script>
 
 </body>
