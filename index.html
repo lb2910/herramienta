@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GIF Compressor - V11 (Fix CDN)</title>
+    <title>GIF Compressor - V12 (Cloudflare Edition)</title>
     
     <style>
         body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .container { max-width: 600px; width: 100%; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
-        /* SEMÁFOROS DE ESTADO */
         .status-bar { display: flex; gap: 10px; margin-bottom: 20px; background: #000; padding: 10px; border-radius: 8px; font-size: 12px; font-family: monospace; }
         .light { display: flex; align-items: center; gap: 5px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; } /* Rojo por defecto */
-        .dot.ok { background: #22c55e; box-shadow: 0 0 5px #22c55e; } /* Verde OK */
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; } 
+        .dot.ok { background: #22c55e; box-shadow: 0 0 5px #22c55e; } 
 
         .upload-box { 
             border: 2px dashed #6366f1; padding: 40px; text-align: center; cursor: pointer; 
@@ -37,28 +36,44 @@
             font-family: monospace; font-size: 11px; padding: 10px; 
             border: 1px solid #333; margin-top: 20px; overflow-y: scroll; box-sizing: border-box;
         }
+        
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 999;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.1);
+            border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s infinite linear;
+        }
+        @keyframes spin { to {transform: rotate(360deg);} }
 
         #preview-img { max-width: 100%; margin-top: 20px; border: 1px solid #333; display: none; }
     </style>
 
-    <script src="https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/dist/gifuct-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/omggif/1.0.10/omggif.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
 </head>
 <body>
 
+<div id="overlay">
+    <div class="spinner"></div>
+    <h3 style="margin-top:20px">Procesando...</h3>
+</div>
+
 <div class="container">
-    <h2>GIF OPTIMIZER V11 (JSDelivr)</h2>
+    <h2>GIF OPTIMIZER V12 (Cloudflare)</h2>
     
     <div class="status-bar">
-        <div class="light"><div id="dot-1" class="dot"></div> Lib: Lector</div>
-        <div class="light"><div id="dot-2" class="dot"></div> Lib: Escritor</div>
+        <div class="light"><div id="dot-1" class="dot"></div> Lector (omggif)</div>
+        <div class="light"><div id="dot-2" class="dot"></div> Escritor (gif.js)</div>
         <div class="light"><div id="dot-3" class="dot"></div> Worker</div>
     </div>
 
     <input type="file" id="fileIn" accept="image/gif" hidden onchange="handleUpload(this)">
     <div class="upload-box" onclick="document.getElementById('fileIn').click()">
-        📂 TOCAR AQUÍ PARA SUBIR
+        📂 SUBIR GIF AQUÍ
     </div>
 
     <div class="controls" id="ctrls">
@@ -68,7 +83,7 @@
         <label>CALIDAD (10): <span id="v-qual">10</span></label>
         <input type="range" id="rng-qual" min="1" max="20" value="10" oninput="updateUI()">
         
-        <button onclick="processGIF()">🚀 PROCESAR AHORA</button>
+        <button onclick="triggerProcess()">🚀 PROCESAR</button>
     </div>
 
     <img id="preview-img" src="">
@@ -80,9 +95,8 @@
 </div>
 
 <script>
-    // --- VARIABLES ---
     let originalFile = null;
-    let originalFrames = [];
+    let gifReader = null; // Instancia omggif
     let resultBlob = null;
     let workerUrl = null;
 
@@ -96,102 +110,124 @@
         document.getElementById('v-qual').innerText = document.getElementById('rng-qual').value;
     }
 
-    // --- 1. VERIFICACIÓN DE LIBRERÍAS (AL INICIO) ---
+    // --- 1. CARGA DE SISTEMA ---
     window.onload = async function() {
-        // Chequeo gifuct-js
-        if(typeof parseGIF !== 'undefined') {
+        // Verificar omggif (Lector)
+        if(typeof Omggif !== 'undefined') {
             document.getElementById('dot-1').classList.add('ok');
-            log("✅ Librería de Lectura (jsDelivr) cargada.");
+            log("✅ Lector cargado (CDNJS).");
         } else {
-            log("❌ ERROR CRÍTICO: No cargó gifuct-js. Intenta recargar la página.");
+            log("❌ ERROR: omggif no cargó.");
         }
 
-        // Chequeo gif.js
+        // Verificar gif.js (Escritor)
         if(typeof GIF !== 'undefined') {
             document.getElementById('dot-2').classList.add('ok');
-            log("✅ Librería de Escritura cargada.");
+            log("✅ Escritor cargado (CDNJS).");
             
-            // PRE-CARGAR WORKER
+            // Descargar Worker manualmente
             try {
-                log("🔄 Descargando Worker...");
                 const resp = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
-                if(!resp.ok) throw new Error("Error HTTP " + resp.status);
+                if(!resp.ok) throw new Error("Error red");
                 const txt = await resp.text();
                 const blob = new Blob([txt], {type: 'application/javascript'});
                 workerUrl = URL.createObjectURL(blob);
                 document.getElementById('dot-3').classList.add('ok');
-                log("✅ Worker listo en memoria.");
+                log("✅ Worker listo.");
             } catch(e) {
                 log("❌ ERROR Worker: " + e.message);
             }
-
         } else {
-            log("❌ ERROR: No cargó gif.js.");
+            log("❌ ERROR: gif.js no cargó.");
         }
     };
 
-    // --- 2. SUBIDA ---
+    // --- 2. LECTURA (Usando Omggif) ---
     function handleUpload(input) {
         if(!input.files[0]) return;
-        const file = input.files[0];
-        if(file.type !== 'image/gif') { alert("Solo GIF"); return; }
-        
-        originalFile = file;
-        log(`📂 Archivo seleccionado: ${file.name}`);
+        originalFile = input.files[0];
+        log(`📂 Archivo: ${originalFile.name}`);
 
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                if(typeof parseGIF === 'undefined') throw new Error("Librería de lectura ausente.");
+                // Crear Unit8Array para omggif
+                const u8Array = new Uint8Array(e.target.result);
+                // Instanciar lector
+                gifReader = new Omggif.GifReader(u8Array);
                 
-                const gif = parseGIF(e.target.result);
-                originalFrames = gif.decompressFrames(true);
-                log(`✅ GIF analizado correctamente: ${originalFrames.length} frames.`);
+                log(`✅ GIF Válido: ${gifReader.numFrames()} frames.`);
+                log(`📏 Dimensiones: ${gifReader.width}x${gifReader.height}`);
                 
                 document.getElementById('ctrls').classList.add('active');
             } catch(err) {
                 log(`❌ Error leyendo GIF: ${err.message}`);
+                alert("El archivo está dañado o no es un GIF válido.");
             }
         };
-        reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(originalFile);
     }
 
-    // --- 3. PROCESO ---
-    function processGIF() {
-        if(!workerUrl) { alert("El sistema no está listo (Worker no cargó)."); return; }
+    // --- 3. PROCESAMIENTO ---
+    function triggerProcess() {
+        if(!workerUrl) { alert("Espera a que cargue el Worker (Luz 3)."); return; }
         
-        log("🚀 Iniciando compresión...");
-        const scale = parseInt(document.getElementById('rng-scale').value) / 100;
-        const quality = parseInt(document.getElementById('rng-qual').value);
+        document.getElementById('overlay').style.display = 'flex';
+        // Delay para que se vea el overlay
+        setTimeout(runEngine, 100);
+    }
 
+    function runEngine() {
         try {
+            const scale = parseInt(document.getElementById('rng-scale').value) / 100;
+            const quality = parseInt(document.getElementById('rng-qual').value);
+            
+            const newWidth = Math.floor(gifReader.width * scale);
+            const newHeight = Math.floor(gifReader.height * scale);
+
             const gif = new GIF({
                 workers: 2,
                 quality: quality,
-                width: originalFrames[0].dims.width * scale,
-                height: originalFrames[0].dims.height * scale,
+                width: newWidth,
+                height: newHeight,
                 workerScript: workerUrl,
-                transparent: 'rgba(0,0,0,0)'
+                transparent: 'rgba(0,0,0,0)' // Intentar preservar transparencia
             });
 
+            // Canvas temporales
             const canvas = document.createElement('canvas');
+            canvas.width = newWidth;
+            canvas.height = newHeight;
             const ctx = canvas.getContext('2d');
-            const temp = document.createElement('canvas');
-            const tctx = temp.getContext('2d');
 
-            originalFrames.forEach(frame => {
-                temp.width = frame.dims.width;
-                temp.height = frame.dims.height;
-                const imgData = new ImageData(frame.patch, frame.dims.width, frame.dims.height);
-                tctx.putImageData(imgData, 0, 0);
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = gifReader.width;
+            tempCanvas.height = gifReader.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Buffer de pixeles para omggif
+            const pixels = new Uint8ClampedArray(gifReader.width * gifReader.height * 4);
 
-                canvas.width = frame.dims.width * scale;
-                canvas.height = frame.dims.height * scale;
-                ctx.clearRect(0,0,canvas.width,canvas.height);
-                ctx.drawImage(temp, 0, 0, canvas.width, canvas.height);
+            log(`Procesando ${gifReader.numFrames()} frames...`);
 
-                gif.addFrame(ctx, {copy: true, delay: frame.delay});
-            });
+            // Loop Frames
+            for(let i=0; i < gifReader.numFrames(); i++) {
+                // 1. Extraer pixeles crudos del frame i
+                gifReader.decodeAndBlitFrameRGBA(i, pixels);
+                
+                // 2. Poner en canvas temporal
+                const imgData = new ImageData(pixels, gifReader.width, gifReader.height);
+                tempCtx.putImageData(imgData, 0, 0);
+
+                // 3. Escalar y limpiar
+                ctx.clearRect(0, 0, newWidth, newHeight);
+                ctx.drawImage(tempCanvas, 0, 0, newWidth, newHeight);
+
+                // 4. Agregar frame al nuevo GIF
+                // Obtenemos info del frame para el delay
+                const frameInfo = gifReader.frameInfo(i);
+                gif.addFrame(ctx, {copy: true, delay: frameInfo.delay * 10}); // *10 porque omggif usa centisegundos
+            }
 
             gif.on('finished', (blob) => {
                 resultBlob = blob;
@@ -201,17 +237,20 @@
                 img.style.display = 'block';
                 
                 const saved = ((originalFile.size - blob.size) / originalFile.size * 100).toFixed(0);
-                document.getElementById('stats').innerText = `Ahorro: ${saved}% (${(blob.size/1024).toFixed(1)} KB)`;
+                document.getElementById('stats').innerText = `Peso Final: ${(blob.size/1024).toFixed(1)} KB (Ahorro: ${saved}%)`;
                 
                 document.getElementById('btn-dl').style.display = 'block';
-                log("✨ PROCESO TERMINADO CON ÉXITO.");
+                document.getElementById('overlay').style.display = 'none';
+                log("✨ ¡PROCESO FINALIZADO!");
             });
 
-            log("Renderizando...");
+            log("Renderizando binario...");
             gif.render();
 
         } catch(e) {
+            document.getElementById('overlay').style.display = 'none';
             log(`❌ CRASH: ${e.message}`);
+            alert("Error: " + e.message);
         }
     }
 
