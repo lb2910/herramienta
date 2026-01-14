@@ -3,166 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GIF Compressor - Tanque V9</title>
+    <title>GIF Compressor - GitHub Final</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/dist/gifuct-js.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/antimatter15/jsgif@master/LZWEncoder.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/antimatter15/jsgif@master/NeuQuant.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/antimatter15/jsgif@master/GIFEncoder.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/antimatter15/jsgif@master/b64.js"></script>
-
     <style>
-        body { background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { max-width: 600px; width: 100%; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
-        .box { background: #222; padding: 30px; border-radius: 10px; max-width: 500px; width: 100%; text-align: center; border: 1px solid #444; }
+        /* SEMÁFOROS DE ESTADO */
+        .status-bar { display: flex; gap: 10px; margin-bottom: 20px; background: #000; padding: 10px; border-radius: 8px; font-size: 12px; font-family: monospace; }
+        .light { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; } /* Rojo por defecto */
+        .dot.ok { background: #22c55e; box-shadow: 0 0 5px #22c55e; } /* Verde OK */
+
+        .upload-box { 
+            border: 2px dashed #6366f1; padding: 40px; text-align: center; cursor: pointer; 
+            border-radius: 8px; margin-bottom: 20px; transition: 0.3s; background: rgba(99, 102, 241, 0.1); font-weight: bold;
+        }
+        .upload-box:hover { background: rgba(99, 102, 241, 0.2); }
+
+        .controls { opacity: 0.5; pointer-events: none; transition: 0.3s; }
+        .controls.active { opacity: 1; pointer-events: all; }
+
+        input[type=range] { width: 100%; margin: 10px 0 20px 0; accent-color: #8b5cf6; }
         
         button {
-            background: #ff0055; color: white; border: none; padding: 15px; width: 100%;
-            font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 15px;
+            background: #8b5cf6; color: white; border: none; padding: 15px; width: 100%;
+            border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;
         }
-        button:disabled { background: #555; cursor: wait; }
+        button:hover { background: #7c3aed; }
 
-        .preview { margin-top: 20px; border: 2px solid #555; min-height: 150px; display: flex; align-items: center; justify-content: center; background: #000; }
-        .preview img { max-width: 100%; }
+        #log-box { 
+            width: 100%; height: 100px; background: #000; color: #00ff00; 
+            font-family: monospace; font-size: 11px; padding: 10px; 
+            border: 1px solid #333; margin-top: 20px; overflow-y: scroll; box-sizing: border-box;
+        }
 
-        input[type=range] { width: 100%; accent-color: #ff0055; }
-        
-        #log { color: #0f0; font-family: monospace; font-size: 12px; margin-top: 10px; text-align: left; height: 100px; overflow-y: auto; background: #000; padding: 5px; border: 1px solid #333; }
-        
-        .warn { color: #fbbf24; font-size: 12px; margin-top: 5px; background: rgba(251, 191, 36, 0.1); padding: 5px; }
+        #preview-img { max-width: 100%; margin-top: 20px; border: 1px solid #333; display: none; }
     </style>
+
+    <script src="https://unpkg.com/gifuct-js@2.1.2/dist/gifuct-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+
 </head>
 <body>
 
-<div class="box">
-    <h2>GIF REDUCER (MODO SEGURO)</h2>
-    <p style="color:#aaa; font-size:14px;">Esta versión congela la pantalla mientras trabaja para evitar errores de seguridad.</p>
+<div class="container">
+    <h2>GIF OPTIMIZER V10</h2>
+    
+    <div class="status-bar">
+        <div class="light"><div id="dot-1" class="dot"></div> Lib: Lector</div>
+        <div class="light"><div id="dot-2" class="dot"></div> Lib: Escritor</div>
+        <div class="light"><div id="dot-3" class="dot"></div> Worker</div>
+    </div>
 
-    <input type="file" id="fileIn" accept="image/gif" style="margin-bottom: 20px;">
-    
-    <label>TAMAÑO: <span id="v-scale">50%</span></label>
-    <input type="range" id="rng-scale" min="10" max="80" value="50" oninput="document.getElementById('v-scale').innerText=this.value+'%'">
-    
-    <button onclick="startSafeProcess()" id="btn-run">REDUCIR PESO</button>
-    
-    <div id="log">Esperando archivo...</div>
-    <div class="warn">⚠️ Si el GIF es muy pesado, la página se congelará unos segundos. No la cierres.</div>
+    <input type="file" id="fileIn" accept="image/gif" hidden onchange="handleUpload(this)">
+    <div class="upload-box" onclick="document.getElementById('fileIn').click()">
+        📂 TOCAR AQUÍ PARA SUBIR
+    </div>
 
-    <div class="preview" id="result-box"></div>
-    <div id="stats" style="margin-top:10px; font-weight:bold;"></div>
+    <div class="controls" id="ctrls">
+        <label>ESCALA: <span id="v-scale">70%</span></label>
+        <input type="range" id="rng-scale" min="30" max="100" value="70" oninput="updateUI()">
+        
+        <label>CALIDAD (10): <span id="v-qual">10</span></label>
+        <input type="range" id="rng-qual" min="1" max="20" value="10" oninput="updateUI()">
+        
+        <button onclick="processGIF()">🚀 PROCESAR AHORA</button>
+    </div>
+
+    <img id="preview-img" src="">
+    <div id="stats" style="margin-top:10px; font-weight:bold; color:#22c55e;"></div>
     
-    <button id="btn-dl" style="display:none; background:#00d26a;" onclick="download()">DESCARGAR</button>
+    <button id="btn-dl" style="display:none; margin-top:10px; background:#22c55e" onclick="download()">⬇️ DESCARGAR</button>
+
+    <div id="log-box">Iniciando sistema...</div>
 </div>
 
 <script>
+    // --- VARIABLES ---
     let originalFile = null;
-    let frames = [];
+    let originalFrames = [];
     let resultBlob = null;
+    let workerUrl = null;
 
+    // --- LOGGING ---
     function log(msg) {
-        const l = document.getElementById('log');
-        l.innerHTML = `> ${msg}<br>` + l.innerHTML;
+        const b = document.getElementById('log-box');
+        b.innerHTML = `> ${msg}<br>` + b.innerHTML;
     }
 
-    document.getElementById('fileIn').addEventListener('change', function(e) {
-        if(!e.target.files[0]) return;
-        originalFile = e.target.files[0];
-        log(`Cargado: ${originalFile.name}`);
-        
-        // Carga rápida
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const gif = parseGIF(event.target.result);
-            frames = gif.decompressFrames(true);
-            log(`✅ Frames leídos: ${frames.length}`);
-        };
-        reader.readAsArrayBuffer(originalFile);
-    });
-
-    function startSafeProcess() {
-        if(!frames.length) { alert("Sube un GIF primero"); return; }
-        
-        const btn = document.getElementById('btn-run');
-        btn.disabled = true;
-        btn.innerText = "PROCESANDO (ESPERA...)";
-        log("⏳ Iniciando proceso sincrónico...");
-
-        // Usamos setTimeout para que el navegador alcance a actualizar el texto del botón antes de congelarse
-        setTimeout(() => {
-            try {
-                runEncoder();
-            } catch(e) {
-                alert("Error: " + e.message);
-                btn.disabled = false;
-            }
-        }, 100);
+    function updateUI() {
+        document.getElementById('v-scale').innerText = document.getElementById('rng-scale').value + "%";
+        document.getElementById('v-qual').innerText = document.getElementById('rng-qual').value;
     }
 
-    function runEncoder() {
-        const scale = parseInt(document.getElementById('rng-scale').value) / 100;
-        
-        // 1. Iniciar Encoder (Librería Vieja pero Segura)
-        const encoder = new GIFEncoder();
-        encoder.setRepeat(0); 
-        encoder.setDelay(frames[0].delay);
-        encoder.setQuality(15); // Calidad media/baja para velocidad
-        encoder.start();
-
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const temp = document.createElement('canvas');
-        const tctx = temp.getContext('2d');
-
-        log(`Procesando ${frames.length} cuadros... (La pantalla se congelará)`);
-
-        for(let i=0; i<frames.length; i++) {
-            let frame = frames[i];
-            
-            // Dibujar frame original
-            temp.width = frame.dims.width;
-            temp.height = frame.dims.height;
-            let imgData = new ImageData(frame.patch, frame.dims.width, frame.dims.height);
-            tctx.putImageData(imgData, 0, 0);
-
-            // Escalar
-            canvas.width = frame.dims.width * scale;
-            canvas.height = frame.dims.height * scale;
-            
-            // Limpiar canvas
-            ctx.fillStyle = "rgb(255,255,255)"; // Fondo blanco para evitar basura negra
-            ctx.fillRect(0,0,canvas.width, canvas.height); 
-            ctx.drawImage(temp, 0, 0, canvas.width, canvas.height);
-
-            // Agregar al GIF
-            encoder.addFrame(ctx);
+    // --- 1. VERIFICACIÓN DE LIBRERÍAS (AL INICIO) ---
+    window.onload = async function() {
+        // Chequeo gifuct-js
+        if(typeof parseGIF !== 'undefined') {
+            document.getElementById('dot-1').classList.add('ok');
+            log("✅ Librería de Lectura cargada.");
+        } else {
+            log("❌ ERROR: No cargó gifuct-js. Revisa tu internet.");
         }
 
-        encoder.finish();
-        
-        // Convertir a Blob
-        const binary = encoder.stream().getData();
-        const array = new Uint8Array(new ArrayBuffer(binary.length));
-        for(let i=0; i<binary.length; i++) { array[i] = binary.charCodeAt(i); }
-        resultBlob = new Blob([array], {type: 'image/gif'});
+        // Chequeo gif.js
+        if(typeof GIF !== 'undefined') {
+            document.getElementById('dot-2').classList.add('ok');
+            log("✅ Librería de Escritura cargada.");
+            
+            // PRE-CARGAR WORKER
+            try {
+                log("🔄 Descargando Worker...");
+                const resp = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+                if(!resp.ok) throw new Error("Error HTTP " + resp.status);
+                const txt = await resp.text();
+                const blob = new Blob([txt], {type: 'application/javascript'});
+                workerUrl = URL.createObjectURL(blob);
+                document.getElementById('dot-3').classList.add('ok');
+                log("✅ Worker listo en memoria.");
+            } catch(e) {
+                log("❌ ERROR Worker: " + e.message);
+                alert("Error cargando componentes. Revisa la consola negra.");
+            }
 
-        // Mostrar
-        const url = URL.createObjectURL(resultBlob);
-        document.getElementById('result-box').innerHTML = `<img src="${url}">`;
-        
-        // Stats
-        const saved = ((originalFile.size - resultBlob.size) / originalFile.size * 100).toFixed(0);
-        document.getElementById('stats').innerHTML = `Nuevo peso: ${(resultBlob.size/1024).toFixed(1)} KB (Ahorro: ${saved}%)`;
+        } else {
+            log("❌ ERROR: No cargó gif.js.");
+        }
+    };
 
-        document.getElementById('btn-dl').style.display = 'block';
-        document.getElementById('btn-run').disabled = false;
-        document.getElementById('btn-run').innerText = "REDUCIR PESO";
-        log("✅ TERMINADO.");
+    // --- 2. SUBIDA ---
+    function handleUpload(input) {
+        if(!input.files[0]) return;
+        const file = input.files[0];
+        if(file.type !== 'image/gif') { alert("Solo GIF"); return; }
+        
+        originalFile = file;
+        log(`📂 Archivo seleccionado: ${file.name}`);
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                // Verificar que parseGIF existe antes de usarlo
+                if(typeof parseGIF === 'undefined') throw new Error("Librería de lectura ausente.");
+                
+                const gif = parseGIF(e.target.result);
+                originalFrames = gif.decompressFrames(true);
+                log(`✅ GIF analizado: ${originalFrames.length} frames.`);
+                
+                // Activar controles
+                document.getElementById('ctrls').classList.add('active');
+            } catch(err) {
+                log(`❌ Error leyendo GIF: ${err.message}`);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // --- 3. PROCESO ---
+    function processGIF() {
+        if(!workerUrl) { alert("El sistema no está listo (Worker no cargó)."); return; }
+        
+        log("🚀 Iniciando compresión...");
+        const scale = parseInt(document.getElementById('rng-scale').value) / 100;
+        const quality = parseInt(document.getElementById('rng-qual').value);
+
+        try {
+            const gif = new GIF({
+                workers: 2,
+                quality: quality,
+                width: originalFrames[0].dims.width * scale,
+                height: originalFrames[0].dims.height * scale,
+                workerScript: workerUrl, // Usamos el Blob local
+                transparent: 'rgba(0,0,0,0)'
+            });
+
+            // Canvas Temporal
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const temp = document.createElement('canvas');
+            const tctx = temp.getContext('2d');
+
+            originalFrames.forEach(frame => {
+                temp.width = frame.dims.width;
+                temp.height = frame.dims.height;
+                const imgData = new ImageData(frame.patch, frame.dims.width, frame.dims.height);
+                tctx.putImageData(imgData, 0, 0);
+
+                canvas.width = frame.dims.width * scale;
+                canvas.height = frame.dims.height * scale;
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.drawImage(temp, 0, 0, canvas.width, canvas.height);
+
+                gif.addFrame(ctx, {copy: true, delay: frame.delay});
+            });
+
+            gif.on('finished', (blob) => {
+                resultBlob = blob;
+                const url = URL.createObjectURL(blob);
+                const img = document.getElementById('preview-img');
+                img.src = url;
+                img.style.display = 'block';
+                
+                const saved = ((originalFile.size - blob.size) / originalFile.size * 100).toFixed(0);
+                document.getElementById('stats').innerText = `Ahorro: ${saved}% (${(blob.size/1024).toFixed(1)} KB)`;
+                
+                document.getElementById('btn-dl').style.display = 'block';
+                log("✨ PROCESO TERMINADO CON ÉXITO.");
+            });
+
+            log("Renderizando...");
+            gif.render();
+
+        } catch(e) {
+            log(`❌ CRASH: ${e.message}`);
+        }
     }
 
     function download() {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(resultBlob);
-        a.download = 'lite.gif';
+        a.download = 'optimizado.gif';
         a.click();
     }
 </script>
