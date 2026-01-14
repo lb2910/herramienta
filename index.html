@@ -3,267 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GIF Optimizer - Ultimate</title>
+    <title>GIF Compressor - GitHub Edition</title>
     
     <script src="https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/dist/gifuct-js.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
     <style>
-        /* --- ESTILOS --- */
-        body { 
-            background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; 
-            margin: 0; padding: 20px; display: flex; justify-content: center; 
-        }
+        body { background: #0f172a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
         
-        #app {
-            background: #1e293b; width: 100%; max-width: 900px; 
-            border-radius: 16px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            border: 1px solid #334155;
-        }
-
-        .header {
-            background: linear-gradient(90deg, #6366f1, #ec4899);
-            padding: 20px; text-align: center;
-        }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 1px; }
-
-        .grid { display: flex; flex-wrap: wrap; }
-        .panel { padding: 25px; flex: 1; min-width: 300px; }
-        .left { border-right: 1px solid #334155; }
-
-        /* UPLOAD */
-        .upload-box {
-            border: 2px dashed #6366f1; background: rgba(99, 102, 241, 0.1);
-            border-radius: 12px; height: 100px; display: flex; align-items: center; 
-            justify-content: center; cursor: pointer; transition: 0.3s;
-            flex-direction: column; color: #a5b4fc; font-weight: bold;
-        }
-        .upload-box:hover { background: rgba(99, 102, 241, 0.2); }
-        .upload-box.ready { border-color: #10b981; background: rgba(16, 185, 129, 0.1); color: #10b981; }
-
-        /* CONTROLS */
-        .control-group { margin-top: 20px; }
-        label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; font-weight: bold; }
-        input[type=range] { width: 100%; cursor: pointer; accent-color: #ec4899; }
+        .container { background: #1e293b; width: 100%; max-width: 600px; padding: 30px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); text-align: center; }
         
-        .btn-process {
-            background: #ec4899; color: white; border: none; padding: 15px; 
-            width: 100%; border-radius: 50px; font-weight: bold; font-size: 16px; 
-            margin-top: 25px; cursor: pointer; transition: 0.2s;
-            opacity: 0.5; pointer-events: none; /* Desactivado al inicio */
+        h1 { margin: 0 0 10px 0; background: linear-gradient(90deg, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p { color: #94a3b8; margin-bottom: 25px; font-size: 14px; }
+
+        .upload-btn {
+            background: rgba(255,255,255,0.05); border: 2px dashed #6366f1; border-radius: 10px;
+            padding: 40px; cursor: pointer; transition: 0.2s; color: #a5b4fc; font-weight: bold;
         }
-        .btn-process.active { opacity: 1; pointer-events: all; }
-        .btn-process:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(236, 72, 153, 0.4); }
+        .upload-btn:hover { background: rgba(99, 102, 241, 0.1); border-color: #a78bfa; }
 
-        /* PREVIEW */
-        .preview-area {
-            background: #020617; border-radius: 12px; min-height: 250px; 
-            display: flex; align-items: center; justify-content: center;
-            border: 1px solid #334155; overflow: hidden; position: relative;
+        .controls { margin-top: 25px; text-align: left; opacity: 0.5; pointer-events: none; transition: 0.3s; }
+        .controls.active { opacity: 1; pointer-events: all; }
+        
+        label { font-size: 12px; font-weight: bold; color: #cbd5e1; display: block; margin-bottom: 5px; }
+        input[type=range] { width: 100%; margin-bottom: 20px; accent-color: #f472b6; }
+
+        button {
+            background: #6366f1; color: white; border: none; padding: 15px; width: 100%;
+            border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;
+            transition: 0.2s;
         }
-        .preview-area img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        button:hover { transform: scale(1.02); background: #4f46e5; }
+        button:disabled { background: #475569; cursor: not-allowed; }
 
-        .stats { margin-top: 15px; font-size: 13px; color: #94a3b8; display: flex; justify-content: space-between; }
-        .stat-val { color: #fff; font-weight: bold; }
-        .stat-save { color: #10b981; font-weight: bold; }
+        .preview { margin-top: 20px; background: #000; border-radius: 8px; overflow: hidden; min-height: 200px; display: flex; align-items: center; justify-content: center; border: 1px solid #334155; }
+        .preview img { max-width: 100%; }
 
-        .btn-download {
-            background: #10b981; color: white; border: none; padding: 10px 20px;
-            border-radius: 8px; font-weight: bold; margin-top: 15px; width: 100%;
-            cursor: pointer; display: none;
-        }
-
-        /* LOG BOX */
-        #log-console {
-            width: 100%; height: 60px; background: #000; color: #0f0; 
-            font-family: monospace; font-size: 10px; border: none; 
-            padding: 10px; margin-top: 20px; resize: none; border-radius: 8px;
+        /* LOG Y CARGA */
+        #log {
+            background: #000; color: #00ff00; font-family: monospace; font-size: 11px;
+            padding: 10px; border-radius: 6px; margin-top: 20px; height: 100px;
+            overflow-y: scroll; text-align: left; border: 1px solid #333;
         }
 
-        /* --- PANTALLA DE CARGA (OVERLAY) --- */
         #overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 9999;
-            display: none; /* Oculto por defecto */
-            flex-direction: column; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000;
         }
-        
         .spinner {
-            width: 60px; height: 60px; border: 6px solid rgba(255,255,255,0.1);
-            border-top-color: #ec4899; border-radius: 50%;
-            animation: spin 1s infinite linear; margin-bottom: 20px;
+            width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.1);
+            border-top-color: #f472b6; border-radius: 50%; animation: spin 1s infinite linear;
         }
-        
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        .loading-text { font-size: 18px; font-weight: bold; color: white; letter-spacing: 1px; }
-        .loading-sub { font-size: 14px; color: #94a3b8; margin-top: 5px; }
-
+        @keyframes spin { to {transform: rotate(360deg);} }
     </style>
 </head>
 <body>
 
 <div id="overlay">
     <div class="spinner"></div>
-    <div class="loading-text">PROCESANDO GIF...</div>
-    <div class="loading-sub">Por favor espera, no cierres la pestaña.</div>
+    <h3 style="margin-top:20px">Procesando...</h3>
+    <p>No cierres la pestaña</p>
 </div>
 
-<div id="app">
-    <div class="header">
-        <h1>⚡ OPTIMIZADOR GIF PRO</h1>
+<div class="container">
+    <h1>GIF OPTIMIZER</h1>
+    <p>Reduce peso sin perder transparencia</p>
+
+    <div class="upload-btn" onclick="document.getElementById('fileIn').click()">
+        📁 CLIC PARA SUBIR GIF
+        <input type="file" id="fileIn" accept="image/gif" hidden onchange="handleFile(this)">
+    </div>
+
+    <div class="controls" id="ctrl-panel">
+        <label>TAMAÑO (ESCALA): <span id="val-scale">70%</span></label>
+        <input type="range" id="rng-scale" min="10" max="100" value="70" oninput="updateUI()">
+
+        <label>CALIDAD (1=MEJOR, 30=PEOR): <span id="val-qual">10</span></label>
+        <input type="range" id="rng-qual" min="1" max="30" value="10" oninput="updateUI()">
+
+        <button onclick="startProcess()" id="btn-run">🚀 REDUCIR PESO</button>
+    </div>
+
+    <div class="preview" id="preview-box">
+        <span style="color:#475569">Vista previa</span>
     </div>
     
-    <div class="grid">
-        <div class="panel left">
-            <input type="file" id="inp-file" accept="image/gif" hidden onchange="handleUpload(this)">
-            <div class="upload-box" id="drop-zone" onclick="document.getElementById('inp-file').click()">
-                <span style="font-size: 24px">📂</span>
-                <span id="lbl-upload">Clic para subir GIF</span>
-            </div>
-
-            <div class="control-group">
-                <label>ESCALA (Tamaño): <span id="lbl-scale" style="color:#ec4899">70%</span></label>
-                <input type="range" id="rng-scale" min="30" max="100" value="70" oninput="updateUI()">
-            </div>
-
-            <div class="control-group">
-                <label>CALIDAD (10 = Balanceado): <span id="lbl-qual" style="color:#ec4899">10</span></label>
-                <input type="range" id="rng-qual" min="1" max="30" value="10" oninput="updateUI()">
-            </div>
-
-            <button class="btn-process" id="btn-go" onclick="triggerProcess()">🚀 REDUCIR PESO</button>
-
-            <textarea id="log-console" readonly>Esperando archivo...</textarea>
-        </div>
-
-        <div class="panel">
-            <label>RESULTADO:</label>
-            <div class="preview-area" id="preview-container">
-                <span style="opacity:0.3">La vista previa aparecerá aquí</span>
-            </div>
-            
-            <div class="stats">
-                <div>Original: <span id="stat-orig" class="stat-val">-</span></div>
-                <div>Nuevo: <span id="stat-new" class="stat-val">-</span></div>
-            </div>
-            <div style="text-align:right; margin-top:5px; font-size:12px;">
-                Ahorro: <span id="stat-save" class="stat-save">0%</span>
-            </div>
-
-            <button class="btn-download" id="btn-dl" onclick="downloadFile()">⬇️ DESCARGAR GIF</button>
-        </div>
+    <div id="results" style="display:none; margin-top:10px; display:flex; justify-content:space-between; font-size:12px;">
+        <span id="res-size"></span>
+        <span id="res-save" style="color:#4ade80"></span>
     </div>
+
+    <button id="btn-dl" style="display:none; margin-top:15px; background:#10b981" onclick="download()">⬇️ DESCARGAR</button>
+
+    <div id="log">Estado: Esperando archivo...</div>
 </div>
 
 <script>
-    // --- VARIABLES GLOBALES ---
     let originalFile = null;
-    let parsedFrames = [];
+    let originalFrames = [];
     let resultBlob = null;
-    
-    // --- UI HELPERS ---
+    let workerUrl = null;
+
     function log(msg) {
-        const c = document.getElementById('log-console');
-        const time = new Date().toLocaleTimeString();
-        c.value = `[${time}] ${msg}\n` + c.value;
+        const l = document.getElementById('log');
+        l.innerHTML += `<div>> ${msg}</div>`;
+        l.scrollTop = l.scrollHeight;
     }
 
     function updateUI() {
-        document.getElementById('lbl-scale').innerText = document.getElementById('rng-scale').value + "%";
-        document.getElementById('lbl-qual').innerText = document.getElementById('rng-qual').value;
+        document.getElementById('val-scale').innerText = document.getElementById('rng-scale').value + "%";
+        document.getElementById('val-qual').innerText = document.getElementById('rng-qual').value;
     }
 
-    function formatBytes(bytes) {
-        if (!bytes) return '0 B';
-        const k = 1024;
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + ['B', 'KB', 'MB', 'GB'][i];
-    }
-
-    // --- 1. SUBIR Y ANALIZAR GIF ---
-    function handleUpload(input) {
-        if (!input.files || !input.files[0]) return;
+    function handleFile(input) {
+        if(!input.files[0]) return;
         const file = input.files[0];
         
-        if (file.type !== 'image/gif') { alert("❌ Solo se admiten GIFs"); return; }
-
-        originalFile = file;
-        log(`Cargando: ${file.name} (${formatBytes(file.size)})`);
-
-        // UI Updates
-        document.getElementById('lbl-upload').innerText = "✅ GIF CARGADO";
-        document.getElementById('drop-zone').classList.add('ready');
-        document.getElementById('stat-orig').innerText = formatBytes(file.size);
+        if(file.type !== 'image/gif') { log("❌ Error: No es un GIF"); return; }
         
-        // Mostrar preview original
-        document.getElementById('preview-container').innerHTML = `<img src="${URL.createObjectURL(file)}">`;
-
-        // Pre-parsear frames (Lector)
+        originalFile = file;
+        log(`📂 Archivo: ${file.name} (${(file.size/1024).toFixed(2)} KB)`);
+        
+        // Preview inicial
+        document.getElementById('preview-box').innerHTML = `<img src="${URL.createObjectURL(file)}">`;
+        
+        // Leer Frames
+        log("⏳ Analizando frames...");
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = (e) => {
             try {
-                // Usamos la librería gifuct-js
                 const gif = parseGIF(e.target.result);
-                parsedFrames = gif.decompressFrames(true);
-                log(`✅ Frames analizados: ${parsedFrames.length}`);
+                originalFrames = gif.decompressFrames(true);
+                log(`✅ Frames detectados: ${originalFrames.length}`);
                 
-                // Activar botón
-                document.getElementById('btn-go').classList.add('active');
-            } catch (err) {
-                log("❌ Error leyendo frames: " + err);
+                // Activar controles
+                document.getElementById('ctrl-panel').classList.add('active');
+                
+                // PRE-CARGAR EL WORKER (El truco para que no falle)
+                prepareWorker();
+                
+            } catch(err) {
+                log(`❌ Error analizando GIF: ${err.message}`);
             }
         };
         reader.readAsArrayBuffer(file);
     }
 
-    // --- 2. ACTIVAR EL PROCESO (TRUCO DEL DELAY) ---
-    function triggerProcess() {
-        if (parsedFrames.length === 0) return;
-
-        // 1. Mostrar pantalla de carga
-        document.getElementById('overlay').style.display = 'flex';
-        log("Iniciando motor gráfico...");
-
-        // 2. Esperar 100ms para que el navegador dibuje el overlay antes de congelarse
-        setTimeout(() => {
-            runOptimization();
-        }, 100);
+    // ESTA ES LA CLAVE: Descargar el código del worker y crear un Blob local
+    async function prepareWorker() {
+        log("⚙️ Cargando motor de compresión...");
+        try {
+            const resp = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+            if(!resp.ok) throw new Error("No se pudo conectar con CDN");
+            const workerCode = await resp.text();
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            workerUrl = URL.createObjectURL(blob);
+            log("✅ Motor listo para usar.");
+        } catch(err) {
+            log(`❌ Error crítico cargando motor: ${err.message}`);
+            alert("Error de conexión con la librería GIF. Revisa tu internet.");
+        }
     }
 
-    // --- 3. PROCESAMIENTO REAL ---
-    function runOptimization() {
+    function startProcess() {
+        if(!workerUrl) { alert("El motor aún no carga. Espera 2 segundos."); return; }
+        
+        document.getElementById('overlay').style.display = 'flex';
+        log("🚀 Iniciando proceso...");
+        
+        // Pequeño delay para que la UI se actualice
+        setTimeout(processGIF, 100);
+    }
+
+    function processGIF() {
         try {
             const scale = parseInt(document.getElementById('rng-scale').value) / 100;
             const quality = parseInt(document.getElementById('rng-qual').value);
-
-            // --- HACK PARA WORKER SIN CORS ---
-            // Creamos un Blob con el código del worker que importa el script de CDN
-            const workerCode = `importScripts('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');`;
-            const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
-            const workerUrl = URL.createObjectURL(workerBlob);
-
-            // Configurar GIF.js
+            
             const gif = new GIF({
                 workers: 2,
                 quality: quality,
-                width: parsedFrames[0].dims.width * scale,
-                height: parsedFrames[0].dims.height * scale,
-                workerScript: workerUrl, // Usamos nuestro worker local
+                width: originalFrames[0].dims.width * scale,
+                height: originalFrames[0].dims.height * scale,
+                workerScript: workerUrl, // Usamos el blob local
                 transparent: 'rgba(0,0,0,0)'
             });
 
-            // Preparar Canvas
+            // Canvas temporal
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
 
-            log(`Procesando ${parsedFrames.length} frames al ${scale*100}%...`);
-
-            // Loop de frames
-            parsedFrames.forEach(frame => {
+            // Procesar cada frame
+            originalFrames.forEach((frame, i) => {
                 // Dibujar frame original
                 tempCanvas.width = frame.dims.width;
                 tempCanvas.height = frame.dims.height;
@@ -273,52 +207,48 @@
                 // Escalar
                 canvas.width = frame.dims.width * scale;
                 canvas.height = frame.dims.height * scale;
+                
+                // Limpiar y dibujar
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
 
-                // Añadir al GIF nuevo
+                // Añadir al GIF
                 gif.addFrame(ctx, {copy: true, delay: frame.delay});
             });
 
-            // Al terminar
-            gif.on('finished', function(blob) {
-                log("✅ ¡Proceso terminado!");
+            gif.on('finished', (blob) => {
                 resultBlob = blob;
-                
-                // Mostrar resultado
                 const url = URL.createObjectURL(blob);
-                document.getElementById('preview-container').innerHTML = `<img src="${url}">`;
                 
-                // Actualizar stats
-                document.getElementById('stat-new').innerText = formatBytes(blob.size);
-                const saved = ((originalFile.size - blob.size) / originalFile.size * 100).toFixed(0);
-                const badge = document.getElementById('stat-save');
-                badge.innerText = saved > 0 ? `-${saved}%` : '+0%';
-                
-                // Mostrar botón descarga y ocultar carga
-                document.getElementById('btn-dl').style.display = 'block';
+                document.getElementById('preview-box').innerHTML = `<img src="${url}">`;
                 document.getElementById('overlay').style.display = 'none';
+                
+                const sizeKB = (blob.size/1024).toFixed(2);
+                const saved = ((originalFile.size - blob.size) / originalFile.size * 100).toFixed(0);
+                
+                log(`✨ Terminado! Nuevo peso: ${sizeKB} KB`);
+                
+                document.getElementById('res-size').innerText = `Peso: ${sizeKB} KB`;
+                document.getElementById('res-save').innerText = `Ahorro: ${saved}%`;
+                document.getElementById('btn-dl').style.display = 'block';
+                document.getElementById('results').style.display = 'flex';
             });
 
-            // Renderizar
+            log(`Renderizando ${originalFrames.length} cuadros...`);
             gif.render();
 
-        } catch (err) {
-            log("❌ ERROR CRÍTICO: " + err.message);
-            alert("Error: " + err.message);
+        } catch(err) {
             document.getElementById('overlay').style.display = 'none';
+            log(`❌ Error durante el proceso: ${err.message}`);
+            alert("Falló la conversión. Revisa el registro negro abajo.");
         }
     }
 
-    // --- 4. DESCARGAR ---
-    function downloadFile() {
-        if (!resultBlob) return;
+    function download() {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(resultBlob);
-        a.download = 'gif-optimizado.gif';
-        document.body.appendChild(a);
+        a.download = 'optimizado.gif';
         a.click();
-        document.body.removeChild(a);
     }
 </script>
 
